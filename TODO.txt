@@ -1,0 +1,26 @@
+// // //
+// TODO:
+// 1.)  Look at ways to accommodate additions and deletions of transactions from this timeline gracefully.
+//      I think simply deleting the object and dealing with the undefined reference will work.
+//      For transaction objects that end up with both accounts becoming undefined, they'll simply be purged
+//      in the next pass through the timeline.
+//      ALSO A transfer lookup map to get a dat for a give transferID
+//
+// 2.)  Look at accounting for accrual of interest that is not paid out right away since banks don't pay
+//      interest daily, they actually just calculate it daily and pay it in a lump at the end of the month.
+//      A sort of interest buffer that's separated from the main account balance until the transaction may do.
+//      Also maybe don't allow for anythng other than daily compounded interest. Other schemes aren't common enough.
+//
+// 3,)  Maintain a graph point at a fixed point of every month scheme, and a summary table data point at the end of every year.
+//      No make this user configurable. Eg, no points; just end result, or basics selections: Daily, Monthly, Anually.
+//
+// 4.)  Also building on #3, should there be a snapshot value for tax purposes from teh 31st of december wth taxes
+//      realistically occuring in april? Or just calculate and apply taxes on december 31st? What about RRSP 60 deal?
+//
+// 7.)  It should do something sensible if someone updates an account that is currently a valid fromAccount in terms of startDate
+//      to one that occurs later than some but not necessarily all of it's child accounts that depend on it.
+//
+// 8.)  Check about recurring transfers for investments and Debts.
+//
+// 9.)  How to deal with hard user end date that is before a recurring transfer end date.
+// // //
