@@ -23,4 +23,6 @@
 // 8.)  Check about recurring transfers for investments and Debts.
 //
 // 9.)  How to deal with hard user end date that is before a recurring transfer end date.
+//
+// 10.) Ensure that recurring transfers with no endDate are treated as recurring indefinitely until timelineEndDate is reached.
 // // //

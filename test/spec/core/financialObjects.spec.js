@@ -15,6 +15,7 @@ describe("FinancialObject public methods and constructors", function() {
 
       var assetInput;
       var assetID;
+      var initialTransferID;
       var err;
 
       beforeEach(function() {
@@ -62,6 +63,23 @@ describe("FinancialObject public methods and constructors", function() {
         PersonalFinanceEngine.createAsset(assetInput)
           .then( function(returnID) {
             expect(PersonalFinanceEngine.assets[returnID].ID).toEqual(returnID);
+            done();
+          })
+          .catch( function(err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            expect(err).toEqual(null);
+            done();
+          });
+      });
+
+      it("should create a transfer definition for the initial value transfer.", function(done) {
+        PersonalFinanceEngine.createAsset(assetInput)
+          .then( function(returnID) {
+            expect(PersonalFinanceEngine.assets[returnID].ID).toEqual(returnID);
+            initialTransferID = PersonalFinanceEngine.assets[returnID].initialTransferID;
+            expect(PersonalFinanceEngine.__test__.transferDefinitions[initialTransferID].toAccount).toEqual(PersonalFinanceEngine.assets[returnID]);
             done();
           })
           .catch( function(err) {
@@ -262,6 +280,7 @@ describe("FinancialObject public methods and constructors", function() {
       var badAssetInput;
       var assetID;
       var edittedAssetID;
+      var initialTransferID;
       var err;
 
       beforeEach(function() {
@@ -324,6 +343,28 @@ describe("FinancialObject public methods and constructors", function() {
             expect(PersonalFinanceEngine.assets[edittedAssetID].subType).toEqual(newAssetInput.subType);
             expect(PersonalFinanceEngine.assets[edittedAssetID].startDate).toEqual(newAssetInput.startDate);
             expect(PersonalFinanceEngine.assets[edittedAssetID].accrualRate).toEqual(newAssetInput.accrualRate);
+            done();
+          })
+          .catch( function(err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            expect(err).toEqual(null);
+            done();
+          });
+      });
+
+      it("should update the transfer definition for the initial value transfer if necessary", function(done) {
+        PersonalFinanceEngine.createAsset(assetInput)
+          .then( function(returnID){
+            assetID = returnID;
+            return PersonalFinanceEngine.editAsset(assetID, newAssetInput);
+          })
+          .then( function(returnID) {
+            edittedAssetID = returnID;
+            expect(PersonalFinanceEngine.assets[returnID].ID).toEqual(returnID);
+            initialTransferID = PersonalFinanceEngine.assets[returnID].initialTransferID;
+            expect(PersonalFinanceEngine.__test__.transferDefinitions[initialTransferID].toAccount).toEqual(PersonalFinanceEngine.assets[returnID]);
             done();
           })
           .catch( function(err) {
@@ -532,6 +573,8 @@ describe("FinancialObject public methods and constructors", function() {
       var laterInvestmentInput;
       var investmentID;
       var laterInvestmentID;
+      var initialTransferID;
+      var accrualTransferID;
       var err;
 
       beforeEach(function() {
@@ -583,6 +626,26 @@ describe("FinancialObject public methods and constructors", function() {
           .then( function(returnID) {
             investmentID = returnID;
             expect(PersonalFinanceEngine.investmentAccounts[investmentID].ID).toEqual(investmentID);
+            done();
+          })
+          .catch( function(err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            expect(err).toEqual(null);
+            done();
+          });
+      });
+
+      it("should create a transfer definition for the initial value and accrualBuffer payment transfers", function(done) {
+        PersonalFinanceEngine.createInvestment(investmentInput)
+          .then( function(returnID) {
+            investmentID = returnID;
+            expect(PersonalFinanceEngine.investmentAccounts[investmentID].ID).toEqual(investmentID);
+            initialTransferID = PersonalFinanceEngine.investmentAccounts[investmentID].initialTransferID;
+            accrualTransferID = PersonalFinanceEngine.investmentAccounts[investmentID].accrualTransferID;
+            expect(PersonalFinanceEngine.__test__.transferDefinitions[initialTransferID].toAccount).toEqual(PersonalFinanceEngine.investmentAccounts[investmentID]);
+            expect(PersonalFinanceEngine.__test__.transferDefinitions[accrualTransferID].toAccount).toEqual(PersonalFinanceEngine.investmentAccounts[investmentID]);
             done();
           })
           .catch( function(err) {
@@ -823,6 +886,8 @@ describe("FinancialObject public methods and constructors", function() {
       var badInvestmentInput;
       var investmentID;
       var edittedInvestmentID;
+      var initialTransferID;
+      var accrualTransferID;
       var err;
 
       beforeEach(function() {
@@ -888,6 +953,29 @@ describe("FinancialObject public methods and constructors", function() {
             expect(PersonalFinanceEngine.investmentAccounts[investmentID].subType).toEqual(newInvestmentInput.subType);
             expect(PersonalFinanceEngine.investmentAccounts[investmentID].startDate).toEqual(newInvestmentInput.startDate);
             expect(PersonalFinanceEngine.investmentAccounts[investmentID].accrualRate).toEqual(newInvestmentInput.accrualRate);
+            done();
+          })
+          .catch( function (err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            expect(err).toEqual(null);
+            done();
+          });
+      });
+
+      it("should edit the transfer definition for the initial value and accrualBuffer payment transfers if necessary", function(done) {
+        PersonalFinanceEngine.createInvestment(investmentInput)
+          .then( function(returnID) {
+            investmentID = returnID;
+            return PersonalFinanceEngine.editInvestment(investmentID, newInvestmentInput);
+          })
+          .then( function(returnID) {
+            expect(investmentID).toEqual(returnID);
+            initialTransferID = PersonalFinanceEngine.investmentAccounts[investmentID].initialTransferID;
+            accrualTransferID = PersonalFinanceEngine.investmentAccounts[investmentID].accrualTransferID;
+            expect(PersonalFinanceEngine.__test__.transferDefinitions[initialTransferID].toAccount).toEqual(PersonalFinanceEngine.investmentAccounts[investmentID]);
+            expect(PersonalFinanceEngine.__test__.transferDefinitions[accrualTransferID].toAccount).toEqual(PersonalFinanceEngine.investmentAccounts[investmentID]);
             done();
           })
           .catch( function (err) {
@@ -1139,6 +1227,26 @@ describe("FinancialObject public methods and constructors", function() {
           .then( function (returnID) {
             debtID = returnID;
             expect(PersonalFinanceEngine.debtAccounts[debtID].ID).toEqual(debtID);
+            done();
+          })
+          .catch( function (err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            expect(err).toEqual(null);
+            done();
+          });
+      });
+
+      it("should create a transfer definition for the initial value and accrualBuffer payment transfers", function(done) {
+        PersonalFinanceEngine.createDebt(debtInput)
+          .then( function (returnID) {
+            debtID = returnID;
+            expect(PersonalFinanceEngine.debtAccounts[debtID].ID).toEqual(debtID);
+            initialTransferID = PersonalFinanceEngine.debtAccounts[debtID].initialTransferID;
+            accrualTransferID = PersonalFinanceEngine.debtAccounts[debtID].accrualTransferID;
+            expect(PersonalFinanceEngine.__test__.transferDefinitions[initialTransferID].toAccount).toEqual(PersonalFinanceEngine.debtAccounts[debtID]);
+            expect(PersonalFinanceEngine.__test__.transferDefinitions[accrualTransferID].toAccount).toEqual(PersonalFinanceEngine.debtAccounts[debtID]);
             done();
           })
           .catch( function (err) {
@@ -1430,6 +1538,29 @@ describe("FinancialObject public methods and constructors", function() {
             done();
           });
       })
+
+      it("should edit the transfer definition for the initial value and accrualBuffer payment transfers if necessary", function(done) {
+        PersonalFinanceEngine.createDebt(debtInput)
+          .then( function (returnID) {
+            debtID = returnID;
+            expect(debtID).toBeDefined();
+            return PersonalFinanceEngine.editDebt(debtID, newDebtInput);
+          })
+          .then( function (returnID) {
+            initialTransferID = PersonalFinanceEngine.debtAccounts[debtID].initialTransferID;
+            accrualTransferID = PersonalFinanceEngine.debtAccounts[debtID].accrualTransferID;
+            expect(PersonalFinanceEngine.__test__.transferDefinitions[initialTransferID].toAccount).toEqual(PersonalFinanceEngine.debtAccounts[debtID]);
+            expect(PersonalFinanceEngine.__test__.transferDefinitions[accrualTransferID].toAccount).toEqual(PersonalFinanceEngine.debtAccounts[debtID]);
+            done();
+          })
+          .catch( function (err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            expect(err).toEqual(null);
+            done();
+          });
+      });
 
       it("should return an error object identifying numerous deficiencies as an issue when the input contains insufficient information", function(done) {
         PersonalFinanceEngine.createDebt(debtInput)

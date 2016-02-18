@@ -89,7 +89,7 @@
           maxDate = transferDefinitions[transferID].date;
         }
       } else if (transferDefinitions[transferID].endDate) {
-        if (!maxDate || transferDefinitions[transferID].endDate.isAfter(maxDate, 'days')) {
+        if (!maxDate || (transferDefinitions[transferID].endDate.isAfter(maxDate, 'days'))) {
           maxDate = transferDefinitions[transferID].endDate;
         }
       }
@@ -463,9 +463,25 @@
             date: investmentAccounts[investmentID].startDate,
           };
 
+          var accrualTransfer = {
+            fromAccount: "external",
+            toAccount: investmentAccounts[investmentID],
+            valueFunction: function(){
+              var amount = investmentAccounts[investmentID]['accrualBuffer'];
+              investmentAccounts[investmentID].accrualBuffer = 0;
+              return amount;
+            },
+            startDate: investmentAccounts[investmentID].startDate,
+            frequency: investmentAccounts[investmentID].accrualPaymentFrequency,
+          };
+
           createOneTimeTransfer(initialTransfer)
             .then(function (returnID) {
               investmentAccounts[investmentID].initialTransferID = returnID;
+              return createRecurringTransfer(accrualTransfer);
+            })
+            .then(function (returnID) {
+              investmentAccounts[investmentID].accrualTransferID = returnID;
               resolve(investmentID);
             })
             .catch( function(err) {
@@ -562,8 +578,24 @@
             date: investmentAccounts[investmentID].startDate,
           };
 
+          var accrualTransfer = {
+            fromAccount: "external",
+            toAccount: investmentAccounts[investmentID],
+            valueFunction: function(){
+              var amount = investmentAccounts[investmentID]['accrualBuffer'];
+              investmentAccounts[investmentID].accrualBuffer = 0;
+              return amount;
+            },
+            startDate: investmentAccounts[investmentID].startDate,
+            frequency: investmentAccounts[investmentID].accrualPaymentFrequency,
+          };
+
           editOneTimeTransfer(investmentAccounts[investmentID].initialTransferID, initialTransfer)
             .then(function (returnID) {
+              return createRecurringTransfer(accrualTransfer);
+            })
+            .then(function (returnID) {
+              investmentAccounts[investmentID].accrualTransferID = returnID;
               resolve(investmentID);
             })
             .catch( function(err) {
@@ -665,9 +697,25 @@
             date: debtAccounts[debtID].startDate,
           };
 
+          var accrualTransfer = {
+            fromAccount: "external",
+            toAccount: debtAccounts[debtID],
+            valueFunction: function(){
+              var amount = debtAccounts[debtID]['accrualBuffer'];
+              debtAccounts[debtID].accrualBuffer = 0;
+              return amount;
+            },
+            startDate: debtAccounts[debtID].startDate,
+            frequency: debtAccounts[debtID].accrualPaymentFrequency,
+          };
+
           createOneTimeTransfer(initialTransfer)
             .then(function (returnID) {
               debtAccounts[debtID].initialTransferID = returnID;
+              return createRecurringTransfer(accrualTransfer);
+            })
+            .then(function (returnID) {
+              debtAccounts[debtID].accrualTransferID = returnID;
               resolve(debtID);
             })
             .catch( function(err) {
@@ -764,9 +812,25 @@
             date: debtAccounts[debtID].startDate,
           };
 
+          var accrualTransfer = {
+            fromAccount: "external",
+            toAccount: debtAccounts[debtID],
+            valueFunction: function(){
+              var amount = debtAccounts[debtID]['accrualBuffer'];
+              debtAccounts[debtID].accrualBuffer = 0;
+              return amount;
+            },
+            startDate: debtAccounts[debtID].startDate,
+            frequency: debtAccounts[debtID].accrualPaymentFrequency,
+          };
+
           editOneTimeTransfer(debtAccounts[debtID].initialTransferID, initialTransfer)
             .then( function () {
-                resolve(debtID);
+              return createRecurringTransfer(accrualTransfer);
+            })
+            .then(function (returnID) {
+              debtAccounts[debtID].accrualTransferID = returnID;
+              resolve(debtID);
             })
             .catch( function(err) {
               if (err.name !== "InvalidInputError") {
@@ -1045,10 +1109,12 @@
           failedInputs.startDate = true;
         };
 
-        if (!validateDate(newTransfer.endDate)) {
-          validationPassed = false;
-          failedInputs.endDate = true;
-        };
+        if ("endDate" in newTransfer) {
+          if (!validateDate(newTransfer.endDate)) {
+            validationPassed = false;
+            failedInputs.endDate = true;
+          };
+        }
 
         if (!validateFrequency(newTransfer.frequency)) {
           validationPassed = false;
@@ -1128,10 +1194,12 @@
           failedInputs.startDate = true;
         };
 
-        if (!validateDate(newTransfer.endDate)) {
-          validationPassed = false;
-          failedInputs.endDate = true;
-        };
+        if ("endDate" in newTransfer) {
+          if (!validateDate(newTransfer.endDate)) {
+            validationPassed = false;
+            failedInputs.endDate = true;
+          };
+        }
 
         if (!validateFrequency(newTransfer.frequency)) {
           validationPassed = false;

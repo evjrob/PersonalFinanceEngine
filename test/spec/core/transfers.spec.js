@@ -507,7 +507,7 @@ describe("Transfer Interfaces", function() {
             expect(err.failedInputs.toAccount).toEqual(true);
             expect(err.failedInputs.valueFunction).toEqual(true);
             expect(err.failedInputs.startDate).toEqual(false);
-            expect(err.failedInputs.endDate).toEqual(true);
+            expect(err.failedInputs.endDate).toEqual(false);
             expect(err.failedInputs.frequency).toEqual(true);
             done();
           });
@@ -648,7 +648,7 @@ describe("Transfer Interfaces", function() {
             expect(err.failedInputs.toAccount).toEqual(true);
             expect(err.failedInputs.valueFunction).toEqual(true);
             expect(err.failedInputs.startDate).toEqual(true);
-            expect(err.failedInputs.endDate).toEqual(true);
+            expect(err.failedInputs.endDate).toEqual(false);
             expect(err.failedInputs.frequency).toEqual(true);
             done();
           });
