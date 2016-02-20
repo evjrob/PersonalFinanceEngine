@@ -19,6 +19,14 @@
   };
 
   var validFrequencies = ["Annually", "Semiannually", "Quarterly", "Monthly", "Biweekly", "Weekly"];
+  var momentIntervalLookup = {
+    "Annually": {interval: "years", multiplier: 1},
+    "Semiannually": {interval: "quarters", multiplier: 2},
+    "Quarterly": {interval: "quarters", multiplier: 1},
+    "Monthly": {interval: "months", multiplier: 1},
+    "Biweekly": {interval: "weeks", multiplier: 2},
+    "Weekly": {interval: "weeks", multiplier: 1},
+  }
 
   // A function to convert javascript date ojects in inputs to moment objects
   function momentifyDates(input) {
@@ -26,7 +34,7 @@
     // Ordinary "date" properties
     if ('date' in input) {
       if (moment.isDate(input.date) || moment.isMoment(input.date)) {
-        input.date = moment(input.date);
+        input.date = moment.utc(input.date);
       } else {
         input.date = moment.invalid();
       }
@@ -35,7 +43,7 @@
     // startDate properties
     if ('startDate' in input) {
       if (moment.isDate(input.startDate) || moment.isMoment(input.startDate)) {
-        input.startDate = moment(input.startDate);
+        input.startDate = moment.utc(input.startDate);
       } else {
         input.startDate = moment.invalid();
       }
@@ -44,7 +52,7 @@
     // endDate properties
     if ('endDate' in input) {
       if (moment.isDate(input.endDate) || moment.isMoment(input.endDate)) {
-        input.endDate = moment(input.endDate);
+        input.endDate = moment.utc(input.endDate);
       } else {
         input.endDate = moment.invalid();
       }
@@ -1329,8 +1337,13 @@
   // for key dates in timeline, complete transfers, and record object
   // balances and other figures in correct tables if it's a scheduled task.
   var timeline = {}; // The internal timeline built by constructTimeline() and used by calculate()
+  var timelineDateFormat = "YYYY-MM-DD";
 
   function constructTimeline() {
+
+    // Reset the timeline
+    this.timeline = {};
+
     // Get the minimum and maximum dates to populate over
     var minDate = modelParameters.timelineStartDate;
     var maxDate = modelParameters.timelineEndDate;
@@ -1340,8 +1353,59 @@
 
     // Regular contributions and interest deposits, or other user defined transfers etc that occur between min and max dates.
     for (var transferID in transferDefinitions) {
-      // Place the transfer functions into to the timeline for this definition.
+      // Get the ref instead of addressing the property repeatedly
+      var currentTransferDef = transferDefinitions[transferID];
 
+      // Place the transfer functions into to the timeline for this definition.
+      if (currentTransferDef.type === "OneTime") {
+
+        // Only add dates that are between the timelineStartDate and timelineEndDate
+        if (currentTransferDef.date.isSameOrAfter(minDate) && currentTransferDef.date.isSameOrBefore(maxDate)) {
+          // Create the timeline date if it does not already exist
+          if (!timeline[currentTransferDef.date.format(timelineDateFormat)]) {
+            timeline[currentTransferDef.date.format(timelineDateFormat)] = [];
+          }
+
+          // Append this transfer defiition's value function
+          timeline[currentTransferDef.date.format(timelineDateFormat)].push(currentTransferDef.valueFunction);
+        }
+
+      } else if (currentTransferDef.type === "Recurring") {
+
+        // Only add dates that are between the timelineStartDate and timelineEndDate
+        if (currentTransferDef.startDate.isSameOrAfter(minDate) && currentTransferDef.startDate.isSameOrBefore(maxDate)) {
+
+          // If the recurring transfer has an end date before timelineEndDate we'll use that
+          var currentEndDate;
+          if (currentTransferDef.endDate) {
+            currentEndDate = moment.min(maxDate, currentTransferDef.endDate);
+          } else {
+            currentEndDate = maxDate;
+          }
+
+          var momentInterval = momentIntervalLookup[currentTransferDef.frequency].interval;
+          //console.log(currentTransferDef.frequency+" : "+momentInterval);
+          var multiplier = momentIntervalLookup[currentTransferDef.frequency].multiplier;
+          //console.log(multiplier+" : "+multiplier);
+
+
+          // Iterate over the interval
+          for (var i = 0; i <= currentEndDate.diff(currentTransferDef.startDate, momentInterval)/multiplier; i++) {
+
+            // Make a moment object for this key date
+            var keyDate = moment(currentTransferDef.startDate).add(i*multiplier, momentInterval);
+
+            // Create the timeline date if it does not already exist
+            if (!timeline[keyDate.format(timelineDateFormat)]) {
+              timeline[keyDate.format(timelineDateFormat)] = [];
+            }
+
+            // Append this transfer defiition's value function
+            timeline[keyDate.format(timelineDateFormat)].push(currentTransferDef.valueFunction);
+
+          }
+        }
+      }
     }
   }
 
@@ -1439,6 +1503,13 @@
       return uuid;
   }
 
+  function clearAll() {
+    this.transferDefinitions = {};
+    this.assets = {};
+    this.investmentAccounts = {};
+    this.debtAccounts = {};
+  }
+
   // Return the public objects and functions.
   PersonalFinanceEngine.modelParameters = modelParameters;
   PersonalFinanceEngine.setUserSelectedEndDate = setUserSelectedEndDate;
@@ -1465,6 +1536,7 @@
   PersonalFinanceEngine.editRecurringTransfer = editRecurringTransfer;
   PersonalFinanceEngine.deleteTransfer = deleteTransfer;
   PersonalFinanceEngine.calculate = calculate;
+  PersonalFinanceEngine.clearAll = clearAll.bind(PersonalFinanceEngine);
 
 
   //** PersonalFinanceEngine FOR TEST **/
@@ -1479,7 +1551,7 @@
   __test__.TransferDefinition = TransferDefinition;
   __test__.OneTimeTransferDefinition = OneTimeTransferDefinition;
   __test__.RecurringTransferDefinition = RecurringTransferDefinition;
-  __test__.constructTimeline = constructTimeline;
+  __test__.constructTimeline = constructTimeline.bind(PersonalFinanceEngine);
   __test__.transferDefinitions = transferDefinitions;
   __test__.getTaxModel = getTaxModel;
   __test__.calculateTaxes = calculateTaxes;
