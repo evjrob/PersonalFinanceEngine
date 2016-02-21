@@ -225,41 +225,7 @@
           accrualRate: false,
         };
 
-        // Checks on input like valid date, valid from / to accounts etc
-        if (!validateName(inputAsset.name)) {
-          validationPassed = false;
-          failedInputs.name = true;
-        };
-
-        if (!validateSubType(inputAsset.subType)) {
-          validationPassed = false;
-          failedInputs.subType = true;
-        };
-
-        if (!validateDate(inputAsset.startDate)) {
-          validationPassed = false;
-          failedInputs.startDate = true;
-        };
-
-        if (!validateFinancialObject(inputAsset.fromAccount)) {
-          validationPassed = false;
-          failedInputs.fromAccount = true;
-        } else if (inputAsset.fromAccount !== "external") {
-          if (!validateFromAccountStartDate(inputAsset.fromAccount.startDate, inputAsset.startDate)) {
-            validationPassed = false;
-            failedInputs.fromAccount = true;
-          }
-        };
-
-        if (!validateInitialValue(inputAsset.initialValue)) {
-          validationPassed = false;
-          failedInputs.initialValue = true;
-        };
-
-        if (!validateAccrualRate(inputAsset.accrualRate)) {
-          validationPassed = false;
-          failedInputs.accrualRate = true;
-        };
+        validationPassed = validateAllFinancialInputs(inputAsset, failedInputs);
 
         if (validationPassed) {
 
@@ -317,41 +283,7 @@
           accrualRate: false,
         };
 
-        // Checks on input like valid date, valid from / to accounts etc
-        if (!validateName(inputAsset.name)) {
-          validationPassed = false;
-          failedInputs.name = true;
-        };
-
-        if (!validateSubType(inputAsset.subType)) {
-          validationPassed = false;
-          failedInputs.subType = true;
-        };
-
-        if (!validateDate(inputAsset.startDate)) {
-          validationPassed = false;
-          failedInputs.startDate = true;
-        };
-
-        if (!validateFinancialObject(inputAsset.fromAccount)) {
-          validationPassed = false;
-          failedInputs.fromAccount = true;
-        } else if (inputAsset.fromAccount !== "external") {
-          if (!validateFromAccountStartDate(inputAsset.fromAccount.startDate, inputAsset.startDate)) {
-            validationPassed = false;
-            failedInputs.fromAccount = true;
-          }
-        };
-
-        if (!validateInitialValue(inputAsset.initialValue)) {
-          validationPassed = false;
-          failedInputs.initialValue = true;
-        };
-
-        if (!validateAccrualRate(inputAsset.accrualRate)) {
-          validationPassed = false;
-          failedInputs.accrualRate = true;
-        };
+        validationPassed = validateAllFinancialInputs(inputAsset, failedInputs);
 
         if (validationPassed) {
 
@@ -416,46 +348,7 @@
           accrualPaymentFrequency: false,
         };
 
-        // Checks on input like valid date, valid from / to accounts etc
-        if (!validateName(inputInvestment.name)) {
-          validationPassed = false;
-          failedInputs.name = true;
-        };
-
-        if (!validateSubType(inputInvestment.subType)) {
-          validationPassed = false;
-          failedInputs.subType = true;
-        };
-
-        if (!validateDate(inputInvestment.startDate)) {
-          validationPassed = false;
-          failedInputs.startDate = true;
-        };
-
-        if (!validateFinancialObject(inputInvestment.fromAccount)) {
-          validationPassed = false;
-          failedInputs.fromAccount = true;
-        } else if (inputInvestment.fromAccount !== "external") {
-          if (!validateFromAccountStartDate(inputInvestment.fromAccount.startDate, inputInvestment.startDate)) {
-            validationPassed = false;
-            failedInputs.fromAccount = true;
-          }
-        };
-
-        if (!validateInitialValue(inputInvestment.initialValue)) {
-          validationPassed = false;
-          failedInputs.initialValue = true;
-        };
-
-        if (!validateAccrualRate(inputInvestment.accrualRate)) {
-          validationPassed = false;
-          failedInputs.accrualRate = true;
-        };
-
-        if (!validateFrequency(inputInvestment.accrualPaymentFrequency)) {
-          validationPassed = false;
-          failedInputs.accrualPaymentFrequency = true;
-        };
+        validationPassed = validateAllFinancialInputs(inputInvestment, failedInputs);
 
         if (validationPassed) {
 
@@ -528,46 +421,7 @@
           accrualPaymentFrequency: false,
         };
 
-        // Checks on input like valid date, valid from / to accounts etc
-        if (!validateName(inputInvestment.name)) {
-          validationPassed = false;
-          failedInputs.name = true;
-        };
-
-        if (!validateSubType(inputInvestment.subType)) {
-          validationPassed = false;
-          failedInputs.subType = true;
-        };
-
-        if (!validateDate(inputInvestment.startDate)) {
-          validationPassed = false;
-          failedInputs.startDate = true;
-        };
-
-        if (!validateFinancialObject(inputInvestment.fromAccount)) {
-          validationPassed = false;
-          failedInputs.fromAccount = true;
-        } else if (inputInvestment.fromAccount !== "external") {
-          if (!validateFromAccountStartDate(inputInvestment.fromAccount.startDate, inputInvestment.startDate)) {
-            validationPassed = false;
-            failedInputs.fromAccount = true;
-          }
-        };
-
-        if (!validateInitialValue(inputInvestment.initialValue)) {
-          validationPassed = false;
-          failedInputs.initialValue = true;
-        };
-
-        if (!validateAccrualRate(inputInvestment.accrualRate)) {
-          validationPassed = false;
-          failedInputs.accrualRate = true;
-        };
-
-        if (!validateFrequency(inputInvestment.accrualPaymentFrequency)) {
-          validationPassed = false;
-          failedInputs.accrualPaymentFrequency = true;
-        };
+        validationPassed = validateAllFinancialInputs(inputInvestment, failedInputs);
 
         if (validationPassed) {
 
@@ -650,46 +504,7 @@
           accrualPaymentFrequency: false,
         };
 
-        // Checks on input like valid date, valid from / to accounts etc
-        if (!validateName(inputDebt.name)) {
-          validationPassed = false;
-          failedInputs.name = true;
-        };
-
-        if (!validateSubType(inputDebt.subType)) {
-          validationPassed = false;
-          failedInputs.subType = true;
-        };
-
-        if (!validateDate(inputDebt.startDate)) {
-          validationPassed = false;
-          failedInputs.startDate = true;
-        };
-
-        if (!validateFinancialObject(inputDebt.fromAccount)) {
-          validationPassed = false;
-          failedInputs.fromAccount = true;
-        } else if (inputDebt.fromAccount !== "external") {
-          if (!validateFromAccountStartDate(inputDebt.fromAccount.startDate, inputDebt.startDate)) {
-            validationPassed = false;
-            failedInputs.fromAccount = true;
-          }
-        };
-
-        if (!validateInitialValue(inputDebt.initialValue)) {
-          validationPassed = false;
-          failedInputs.initialValue = true;
-        };
-
-        if (!validateAccrualRate(inputDebt.accrualRate)) {
-          validationPassed = false;
-          failedInputs.accrualRate = true;
-        };
-
-        if (!validateFrequency(inputDebt.accrualPaymentFrequency)) {
-          validationPassed = false;
-          failedInputs.accrualPaymentFrequency = true;
-        };
+        validationPassed = validateAllFinancialInputs(inputDebt, failedInputs);
 
         if (validationPassed) {
 
@@ -762,46 +577,7 @@
           accrualPaymentFrequency: false,
         };
 
-        // Checks on input like valid date, valid from / to accounts etc
-        if (!validateName(inputDebt.name)) {
-          validationPassed = false;
-          failedInputs.name = true;
-        };
-
-        if (!validateSubType(inputDebt.subType)) {
-          validationPassed = false;
-          failedInputs.subType = true;
-        };
-
-        if (!validateDate(inputDebt.startDate)) {
-          validationPassed = false;
-          failedInputs.startDate = true;
-        };
-
-        if (!validateFinancialObject(inputDebt.fromAccount)) {
-          validationPassed = false;
-          failedInputs.fromAccount = true;
-        } else if (inputDebt.fromAccount !== "external") {
-          if (!validateFromAccountStartDate(inputDebt.fromAccount.startDate, inputDebt.startDate)) {
-            validationPassed = false;
-            failedInputs.fromAccount = true;
-          }
-        };
-
-        if (!validateInitialValue(inputDebt.initialValue)) {
-          validationPassed = false;
-          failedInputs.initialValue = true;
-        };
-
-        if (!validateAccrualRate(inputDebt.accrualRate)) {
-          validationPassed = false;
-          failedInputs.accrualRate = true;
-        };
-
-        if (!validateFrequency(inputDebt.accrualPaymentFrequency)) {
-          validationPassed = false;
-          failedInputs.accrualPaymentFrequency = true;
-        };
+        validationPassed = validateAllFinancialInputs(inputDebt, failedInputs);
 
         if (validationPassed) {
 
@@ -945,26 +721,7 @@
           date: false
         };
 
-        // Checks on input like valid date, valid from / to accounts etc
-        if (!validateFinancialObject(newTransfer.fromAccount)) {
-          validationPassed = false;
-          failedInputs.fromAccount = true;
-        };
-
-        if (!validateFinancialObject(newTransfer.toAccount)) {
-          validationPassed = false;
-          failedInputs.toAccount = true;
-        };
-
-        if (!validateValueFunction(newTransfer.valueFunction)) {
-          validationPassed = false;
-          failedInputs.valueFunction = true;
-        }
-
-        if (!validateDate(newTransfer.date)) {
-          validationPassed = false;
-          failedInputs.date = true;
-        };
+        validationPassed = validateAllTransferInputs(newTransfer, failedInputs);
 
         if (validationPassed) {
 
@@ -1016,26 +773,7 @@
           date: false
         };
 
-        // Checks on input like valid date, valid from / to accounts etc
-        if (!validateFinancialObject(newTransfer.fromAccount)) {
-          validationPassed = false;
-          failedInputs.fromAccount = true;
-        };
-
-        if (!validateFinancialObject(newTransfer.toAccount)) {
-          validationPassed = false;
-          failedInputs.toAccount = true;
-        };
-
-        if (!validateValueFunction(newTransfer.valueFunction)) {
-          validationPassed = false;
-          failedInputs.valueFunction = true;
-        }
-
-        if (!validateDate(newTransfer.date)) {
-          validationPassed = false;
-          failedInputs.date = true;
-        };
+        validationPassed = validateAllTransferInputs(newTransfer, failedInputs);
 
         if (validationPassed) {
 
@@ -1096,38 +834,7 @@
           frequency: false,
         };
 
-        // Checks on input like valid date, valid from / to accounts etc
-        if (!validateFinancialObject(newTransfer.fromAccount)) {
-          validationPassed = false;
-          failedInputs.fromAccount = true;
-        };
-
-        if (!validateFinancialObject(newTransfer.toAccount)) {
-          validationPassed = false;
-          failedInputs.toAccount = true;
-        };
-
-        if (!validateValueFunction(newTransfer.valueFunction)) {
-          validationPassed = false;
-          failedInputs.valueFunction = true;
-        }
-
-        if (!validateDate(newTransfer.startDate)) {
-          validationPassed = false;
-          failedInputs.startDate = true;
-        };
-
-        if ("endDate" in newTransfer) {
-          if (!validateDate(newTransfer.endDate)) {
-            validationPassed = false;
-            failedInputs.endDate = true;
-          };
-        }
-
-        if (!validateFrequency(newTransfer.frequency)) {
-          validationPassed = false;
-          failedInputs.frequency = true;
-        };
+        validationPassed = validateAllTransferInputs(newTransfer, failedInputs);
 
         if (validationPassed) {
 
@@ -1181,38 +888,7 @@
           frequency: false,
         };
 
-        // Checks on input like valid date, valid from / to accounts etc
-        if (!validateFinancialObject(newTransfer.fromAccount)) {
-          validationPassed = false;
-          failedInputs.fromAccount = true;
-        };
-
-        if (!validateFinancialObject(newTransfer.toAccount)) {
-          validationPassed = false;
-          failedInputs.toAccount = true;
-        };
-
-        if (!validateValueFunction(newTransfer.valueFunction)) {
-          validationPassed = false;
-          failedInputs.valueFunction = true;
-        }
-
-        if (!validateDate(newTransfer.startDate)) {
-          validationPassed = false;
-          failedInputs.startDate = true;
-        };
-
-        if ("endDate" in newTransfer) {
-          if (!validateDate(newTransfer.endDate)) {
-            validationPassed = false;
-            failedInputs.endDate = true;
-          };
-        }
-
-        if (!validateFrequency(newTransfer.frequency)) {
-          validationPassed = false;
-          failedInputs.frequency = true;
-        };
+        validationPassed = validateAllTransferInputs(newTransfer, failedInputs);
 
         if (validationPassed) {
 
@@ -1441,6 +1117,117 @@
   // Supporting functions.
   // // //
 
+  // A catch all verification function for financial objects and accounts to reduce code repetition
+  // returns a validationPassed (boolean) and acts on the passed failedInputs object to set true for
+  // the specific inputObject properties hat failed the validation.
+  function validateAllFinancialInputs(inputObject, failedInputs) {
+
+    var validationPassed = true;
+
+    // Checks on input like valid date, valid from / to accounts etc
+    if (!validateName(inputObject.name)) {
+      validationPassed = false;
+      failedInputs.name = true;
+    };
+
+    if (!validateSubType(inputObject.subType)) {
+      validationPassed = false;
+      failedInputs.subType = true;
+    };
+
+    if (!validateDate(inputObject.startDate)) {
+      validationPassed = false;
+      failedInputs.startDate = true;
+    };
+
+    if (!validateFinancialObject(inputObject.fromAccount)) {
+      validationPassed = false;
+      failedInputs.fromAccount = true;
+    } else if (inputObject.fromAccount !== "external") {
+      if (!validateFromAccountStartDate(inputObject.fromAccount.startDate, inputObject.startDate)) {
+        validationPassed = false;
+        failedInputs.fromAccount = true;
+      }
+    };
+
+    if (!validateInitialValue(inputObject.initialValue)) {
+      validationPassed = false;
+      failedInputs.initialValue = true;
+    };
+
+    if (!validateAccrualRate(inputObject.accrualRate)) {
+      validationPassed = false;
+      failedInputs.accrualRate = true;
+    };
+
+    // Check if the following properties are expected in the failedInputs object before validating.
+    if ("accrualPaymentFrequency" in failedInputs) {
+      if (!validateFrequency(inputObject.accrualPaymentFrequency)) {
+        validationPassed = false;
+        failedInputs.accrualPaymentFrequency = true;
+      };
+    }
+
+    return validationPassed;
+  }
+
+  // A cacth all verification function for transfer definitions
+  // returns a validationPassed (boolean) and acts on the passed failedInputs object to set true for
+  // the specific inputObject properties hat failed the validation.
+  function validateAllTransferInputs(inputObject, failedInputs) {
+
+    var validationPassed = true;
+
+    // Checks on input like valid date, valid from / to accounts etc
+    if (!validateFinancialObject(inputObject.fromAccount)) {
+      validationPassed = false;
+      failedInputs.fromAccount = true;
+    };
+
+    if (!validateFinancialObject(inputObject.toAccount)) {
+      validationPassed = false;
+      failedInputs.toAccount = true;
+    };
+
+    if (!validateValueFunction(inputObject.valueFunction)) {
+      validationPassed = false;
+      failedInputs.valueFunction = true;
+    }
+
+    // Check if the following properties are expected in the failedInputs object before validating.
+    if ("date" in failedInputs) {
+      if (!validateDate(inputObject.date)) {
+        validationPassed = false;
+        failedInputs.date = true;
+      }
+    }
+
+    if ("startDate" in failedInputs) {
+      if (!validateDate(inputObject.startDate)) {
+        validationPassed = false;
+        failedInputs.startDate = true;
+      }
+    }
+
+    if ("endDate" in failedInputs) {
+      if ("endDate" in inputObject) {
+        if (!validateDate(inputObject.endDate)) {
+          validationPassed = false;
+          failedInputs.endDate = true;
+        }
+      }
+    }
+
+    if ("frequency" in failedInputs) {
+      if (!validateFrequency(inputObject.frequency)) {
+        validationPassed = false;
+        failedInputs.frequency = true;
+      }
+    }
+
+    return validationPassed;
+  }
+
   function validateName(inputName) {
     return (typeof inputName === "string");
   }
@@ -1503,13 +1290,6 @@
       return uuid;
   }
 
-  function clearAll() {
-    this.transferDefinitions = {};
-    this.assets = {};
-    this.investmentAccounts = {};
-    this.debtAccounts = {};
-  }
-
   // Return the public objects and functions.
   PersonalFinanceEngine.modelParameters = modelParameters;
   PersonalFinanceEngine.setUserSelectedEndDate = setUserSelectedEndDate;
@@ -1536,8 +1316,6 @@
   PersonalFinanceEngine.editRecurringTransfer = editRecurringTransfer;
   PersonalFinanceEngine.deleteTransfer = deleteTransfer;
   PersonalFinanceEngine.calculate = calculate;
-  PersonalFinanceEngine.clearAll = clearAll.bind(PersonalFinanceEngine);
-
 
   //** PersonalFinanceEngine FOR TEST **/
   var __test__ = {};
