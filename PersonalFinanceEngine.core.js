@@ -293,7 +293,7 @@
           var asset = new Asset(inputAsset);
           assets[assetID] = asset;
           assets[assetID].initialTransferID = tempInitialTransferID;
-          assets[assetID].associatedTransfers =tempAssociatedTransfers;
+          assets[assetID].associatedTransfers = tempAssociatedTransfers;
 
           var initialTransfer = {
             fromAccount: assets[assetID].fromAccount,
@@ -427,10 +427,12 @@
 
           inputInvestment.ID = investmentID;
           var tempInitialTransferID = investmentAccounts[investmentID].initialTransferID;
+          var tempAccrualTransferID = investmentAccounts[investmentID].accrualTransferID;
           var tempAssociatedTransfers = investmentAccounts[investmentID].associatedTransfers;
           var investment = new InvestmentAccount(inputInvestment);
           investmentAccounts[investmentID] = investment;
           investmentAccounts[investmentID].initialTransferID = tempInitialTransferID;
+          investmentAccounts[investmentID].accrualTransferID = tempAccrualTransferID;
           investmentAccounts[investmentID].associatedTransfers = tempAssociatedTransfers;
 
           var initialTransfer = {
@@ -454,10 +456,9 @@
 
           editOneTimeTransfer(investmentAccounts[investmentID].initialTransferID, initialTransfer)
             .then(function (returnID) {
-              return createRecurringTransfer(accrualTransfer);
+              return editRecurringTransfer(investmentAccounts[investmentID].accrualTransferID, accrualTransfer);
             })
             .then(function (returnID) {
-              investmentAccounts[investmentID].accrualTransferID = returnID;
               resolve(investmentID);
             })
             .catch( function(err) {
@@ -583,10 +584,12 @@
 
           inputDebt.ID = debtID;
           var tempInitialTransferID = debtAccounts[debtID].initialTransferID;
+          var tempAccrualTransferID = debtAccounts[debtID].accrualTransferID;
           var tempAssociatedTransfers = debtAccounts[debtID].associatedTransfers;
           var debt = new DebtAccount(inputDebt);
           debtAccounts[debtID] = debt;
           debtAccounts[debtID].initialTransferID = tempInitialTransferID;
+          debtAccounts[debtID].accrualTransferID = tempAccrualTransferID;
           debtAccounts[debtID].associatedTransfers = tempAssociatedTransfers;
 
           var initialTransfer = {
@@ -610,10 +613,9 @@
 
           editOneTimeTransfer(debtAccounts[debtID].initialTransferID, initialTransfer)
             .then( function () {
-              return createRecurringTransfer(accrualTransfer);
+              return editRecurringTransfer(debtAccounts[debtID].accrualTransferID, accrualTransfer);
             })
             .then(function (returnID) {
-              debtAccounts[debtID].accrualTransferID = returnID;
               resolve(debtID);
             })
             .catch( function(err) {
@@ -850,7 +852,7 @@
             }
           }
 
-          if (newTransfer.fromAccount !== "external") {
+          if (newTransfer.toAccount !== "external") {
             if (newTransfer.toAccount.associatedTransfers.indexOf(transferID) === -1) {
               newTransfer.toAccount.associatedTransfers.push(transferID);
             }
@@ -1013,6 +1015,7 @@
   // for key dates in timeline, complete transfers, and record object
   // balances and other figures in correct tables if it's a scheduled task.
   var timeline = {}; // The internal timeline built by constructTimeline() and used by calculate()
+  var timelineDates = [];
   var timelineDateFormat = "YYYY-MM-DD";
 
   function constructTimeline() {
@@ -1025,7 +1028,7 @@
     var maxDate = modelParameters.timelineEndDate;
 
     // Fill in date entries for the regular periods like December 31st for taxes,
-    // for reporting dates. EG. every dec 31st, last day of every month, etc. depending.
+    // for reporting dates. Eg. every dec 31st, last day of every month, etc. depending.
 
     // Regular contributions and interest deposits, or other user defined transfers etc that occur between min and max dates.
     for (var transferID in transferDefinitions) {
@@ -1104,7 +1107,13 @@
   // // //
 
   function calculate() {
-    // constructTimeline();
+
+    constructTimeline();
+
+    // Turn the properties of the timeline into an array of date strings
+
+    // Sort the date string array using the builtin sort method
+
     // For all dates in timeline in order {
       // Calculate interest/ accruals on all financialObjects
       // Clear all scheduled transactions
@@ -1189,6 +1198,12 @@
       failedInputs.toAccount = true;
     };
 
+    if (!validateAccountsNotBothExternal(inputObject.fromAccount, inputObject.toAccount)) {
+      validationPassed = false;
+      failedInputs.fromAccount = true;
+      failedInputs.toAccount = true;
+    }
+
     if (!validateValueFunction(inputObject.valueFunction)) {
       validationPassed = false;
       failedInputs.valueFunction = true;
@@ -1246,6 +1261,10 @@
 
   function validateFinancialObject(inputObject) {
     return ((inputObject instanceof FinancialObject) || (inputObject === "external"));
+  }
+
+  function validateAccountsNotBothExternal(fromAccount, toAccount) {
+    return !(fromAccount === "external" && toAccount === "external");
   }
 
   function validateValueFunction(inputFunction) {

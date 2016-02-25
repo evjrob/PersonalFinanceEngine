@@ -5,7 +5,7 @@ describe("Transfer Interfaces", function() {
     var testObject;
     var testObject2;
 
-    beforeEach(function() {
+    beforeAll(function() {
       testObject = new PersonalFinanceEngine.__test__.FinancialObject({
         name: "Test",
         startDate: new Date("1970-01-01"), // Create a date of January 1st 1970.
@@ -13,8 +13,6 @@ describe("Transfer Interfaces", function() {
         initialValue: 1000,  // Start balance of $1000
         accrualRate: 0.05
       });
-      // Manually clear the initialValue transaction;
-      testObject.value = 1000;
 
       testObject2 = new PersonalFinanceEngine.__test__.FinancialObject({
         name: "Test2",
@@ -23,9 +21,13 @@ describe("Transfer Interfaces", function() {
         initialValue: 1000,  // Start balance of $1000
         accrualRate: 0.05
       });
-      // Manually clear the initialValue transaction;
-      testObject2.value = 1000;
     });
+
+    beforeEach( function() {
+      // Manually clear the initialValue transactions;
+      testObject.value = 1000;
+      testObject2.value = 1000;
+    })
 
     it("should have a transfer method on the PersonalFinanceEngine scope.", function() {
       expect(PersonalFinanceEngine.transfer).toEqual(jasmine.any(Function));
@@ -58,7 +60,7 @@ describe("Transfer Interfaces", function() {
       var badValueFunctionInput;
       var insufficientInput;
 
-      beforeEach(function() {
+      beforeAll(function() {
         testFinancialAccount1 = new PersonalFinanceEngine.__test__.FinancialAccount({
           name: "Test",
           startDate: new Date("1970-01-01"), //Create a current date object. We expect that the startDate in modelParameters will be used instead.
@@ -74,7 +76,9 @@ describe("Transfer Interfaces", function() {
           initialValue: 1000,  // Start balance of $1000
           accrualRate: 0
         });
+      });
 
+      beforeEach( function() {
         transferInput = {
           fromAccount: testFinancialAccount1,
           toAccount: testFinancialAccount2,
@@ -98,6 +102,10 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(transferID).toBeDefined();
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -114,6 +122,10 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(PersonalFinanceEngine.__test__.transferDefinitions[transferID]).toEqual(jasmine.any(Object));
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -131,6 +143,10 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(transferID).not.toBeDefined();
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -152,6 +168,10 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(transferID).not.toBeDefined();
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -172,6 +192,10 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(transferID).not.toBeDefined();
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -193,6 +217,10 @@ describe("Transfer Interfaces", function() {
             transferID = returnID;
             expect(testFinancialAccount1.associatedTransfers).toContain(transferID);
             expect(testFinancialAccount2.associatedTransfers).toContain(transferID);
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -214,7 +242,7 @@ describe("Transfer Interfaces", function() {
       var newTransferInput;
       var badTransferInput;
 
-      beforeEach(function() {
+      beforeAll(function() {
         testFinancialAccount1 = new PersonalFinanceEngine.__test__.FinancialAccount({
           name: "Test",
           startDate: new Date("1970-01-01"), //Create a current date object. We expect that the startDate in modelParameters will be used instead.
@@ -238,7 +266,9 @@ describe("Transfer Interfaces", function() {
           initialValue: 1000,  // Start balance of $1000
           accrualRate: 0
         });
+      });
 
+      beforeEach( function() {
         originalTransferInput = {
           fromAccount: testFinancialAccount1,
           toAccount: testFinancialAccount2,
@@ -281,6 +311,10 @@ describe("Transfer Interfaces", function() {
             expect(PersonalFinanceEngine.__test__.transferDefinitions[originalTransferID].toAccount).toEqual(testFinancialAccount3);
             expect(PersonalFinanceEngine.__test__.transferDefinitions[originalTransferID].valueFunction()).toEqual(2000);
             expect(PersonalFinanceEngine.__test__.transferDefinitions[originalTransferID].date).toEqual(newTransferInput.date);
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -302,7 +336,6 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             returnedTransferID = returnID;
             expect(returnedTransferID).not.toBeDefined();
-            done();
           })
           .catch( function (err) {
             if (err.name !== "InvalidInputError") {
@@ -313,8 +346,13 @@ describe("Transfer Interfaces", function() {
             expect(err.failedInputs.toAccount).toEqual(true);
             expect(err.failedInputs.valueFunction).toEqual(true);
             expect(err.failedInputs.date).toEqual(true);
+          })
+          .then( function () {
+            return PersonalFinanceEngine.deleteTransfer(originalTransferID);
+          })
+          .then(function(){
             done();
-          });
+          })
       });
 
       it("should update the associatedTransfers arrays on the old FinancialAccounts if either are changed.", function(done) {
@@ -329,6 +367,10 @@ describe("Transfer Interfaces", function() {
             expect(testFinancialAccount1.associatedTransfers).toContain(originalTransferID);
             expect(testFinancialAccount3.associatedTransfers).toContain(originalTransferID);
             expect(testFinancialAccount2.associatedTransfers).not.toContain(originalTransferID);
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -352,7 +394,7 @@ describe("Transfer Interfaces", function() {
       var transferInput;
       var insufficientInput;
 
-      beforeEach(function() {
+      beforeAll(function() {
         testFinancialAccount1 = new PersonalFinanceEngine.__test__.FinancialAccount({
           name: "Test",
           startDate: new Date("1970-01-01"), //Create a current date object. We expect that the startDate in modelParameters will be used instead.
@@ -368,7 +410,9 @@ describe("Transfer Interfaces", function() {
           initialValue: 1000,  // Start balance of $1000
           accrualRate: 0
         });
+      })
 
+      beforeEach( function() {
         transferInput = {
           fromAccount: testFinancialAccount1,
           toAccount: testFinancialAccount2,
@@ -394,6 +438,10 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(transferID).toBeDefined();
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -410,6 +458,10 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(PersonalFinanceEngine.__test__.transferDefinitions[transferID]).toEqual(jasmine.any(Object));
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -428,6 +480,10 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(transferID).not.toBeDefined();
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -451,6 +507,10 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(transferID).not.toBeDefined();
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -474,6 +534,10 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(transferID).not.toBeDefined();
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -496,6 +560,10 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(transferID).not.toBeDefined();
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -519,6 +587,10 @@ describe("Transfer Interfaces", function() {
             transferID = returnID;
             expect(testFinancialAccount1.associatedTransfers).toContain(transferID);
             expect(testFinancialAccount2.associatedTransfers).toContain(transferID);
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -541,7 +613,7 @@ describe("Transfer Interfaces", function() {
       var newTransferInput;
       var badTransferInput;
 
-      beforeEach(function() {
+      beforeAll(function() {
         testFinancialAccount1 = new PersonalFinanceEngine.__test__.FinancialAccount({
           name: "Test",
           startDate: new Date("1970-01-01"), //Create a current date object. We expect that the startDate in modelParameters will be used instead.
@@ -565,7 +637,9 @@ describe("Transfer Interfaces", function() {
           initialValue: 1000,  // Start balance of $1000
           accrualRate: 0
         });
+      })
 
+      beforeEach( function () {
         originalTransferInput = {
           fromAccount: testFinancialAccount1,
           toAccount: testFinancialAccount2,
@@ -616,6 +690,10 @@ describe("Transfer Interfaces", function() {
             expect(PersonalFinanceEngine.__test__.transferDefinitions[originalTransferID].startDate).toEqual(newTransferInput.startDate);
             expect(PersonalFinanceEngine.__test__.transferDefinitions[originalTransferID].endDate).toEqual(newTransferInput.endDate);
             expect(PersonalFinanceEngine.__test__.transferDefinitions[originalTransferID].frequency).toEqual(newTransferInput.frequency);
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -637,7 +715,6 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             returnedTransferID = returnID;
             expect(returnedTransferID).not.toBeDefined();
-            done();
           })
           .catch( function (err) {
             if (err.name !== "InvalidInputError") {
@@ -650,8 +727,13 @@ describe("Transfer Interfaces", function() {
             expect(err.failedInputs.startDate).toEqual(true);
             expect(err.failedInputs.endDate).toEqual(false);
             expect(err.failedInputs.frequency).toEqual(true);
+          })
+          .then( function () {
+            return PersonalFinanceEngine.deleteTransfer(originalTransferID);
+          })
+          .then(function(){
             done();
-          });
+          })
       });
 
       it("should update the associatedTransfers arrays on the old FinancialAccounts if either are changed.", function(done) {
@@ -667,6 +749,10 @@ describe("Transfer Interfaces", function() {
             expect(testFinancialAccount1.associatedTransfers).toContain(originalTransferID);
             expect(testFinancialAccount3.associatedTransfers).toContain(originalTransferID);
             expect(testFinancialAccount2.associatedTransfers).not.toContain(originalTransferID);
+
+            return PersonalFinanceEngine.deleteTransfer(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -688,7 +774,7 @@ describe("Transfer Interfaces", function() {
       var returnedTransferID;
       var transferInput;
 
-      beforeEach(function() {
+      beforeAll(function() {
         testFinancialAccount1 = new PersonalFinanceEngine.__test__.FinancialAccount({
           name: "Test",
           startDate: new Date("1970-01-01"), //Create a current date object. We expect that the startDate in modelParameters will be used instead.
@@ -724,7 +810,7 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(transferID).toBeDefined();
-            return PersonalFinanceEngine.deleteTransfer(transferID, transferInput);
+            return PersonalFinanceEngine.deleteTransfer(returnID);
           })
           .then( function (returnID) {
             returnedTransferID = returnID;
@@ -746,7 +832,7 @@ describe("Transfer Interfaces", function() {
           .then( function (returnID) {
             transferID = returnID;
             expect(transferID).toBeDefined();
-            return PersonalFinanceEngine.deleteTransfer(transferID, transferInput);
+            return PersonalFinanceEngine.deleteTransfer(returnID);
           })
           .then( function (returnID) {
             returnedTransferID = returnID;
@@ -776,7 +862,7 @@ describe("Transfer defintion object constructors", function() {
     var testFinancialAccount2;
     var transferValue = 1000;
 
-    beforeEach(function() {
+    beforeAll(function() {
       testFinancialAccount1 = new PersonalFinanceEngine.__test__.FinancialAccount({
         name: "Test",
         startDate: new Date("1970-01-01"), //Create a current date object. We expect that the startDate in modelParameters will be used instead.
@@ -828,7 +914,7 @@ describe("Transfer defintion object constructors", function() {
     var transferValue = 1000;
     var date = Date("1970-01-01")
 
-    beforeEach(function() {
+    beforeAll(function() {
       testFinancialAccount1 = new PersonalFinanceEngine.__test__.FinancialAccount({
         name: "Test",
         startDate: new Date("1970-01-01"), //Create a current date object. We expect that the startDate in modelParameters will be used instead.
@@ -883,7 +969,7 @@ describe("Transfer defintion object constructors", function() {
     var endDate = Date("1971-01-01");
     var frequency = "Monthly";
 
-    beforeEach(function() {
+    beforeAll(function() {
       testFinancialAccount1 = new PersonalFinanceEngine.__test__.FinancialAccount({
         name: "Test",
         startDate: new Date("1970-01-01"), //Create a current date object. We expect that the startDate in modelParameters will be used instead.

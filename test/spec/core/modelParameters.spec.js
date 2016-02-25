@@ -1,3 +1,4 @@
+"use strict";
 describe("Model parameters and other core functions", function() {
 
   describe("modelParameters", function() {
@@ -36,7 +37,7 @@ describe("Model parameters and other core functions", function() {
       var investmentInput;
       var investmentID;
 
-      beforeEach( function(done) {
+      beforeAll( function(done) {
         investmentInput = {
           name: "Test",
           subType: "",
@@ -48,7 +49,7 @@ describe("Model parameters and other core functions", function() {
         }
         PersonalFinanceEngine.deleteUserSelectedEndDate()
         .then( function() {
-          return PersonalFinanceEngine.createInvestment(investmentInput)
+          return PersonalFinanceEngine.createInvestment(investmentInput);
         })
         .then( function(returnID) {
           investmentID = returnID;
@@ -61,6 +62,24 @@ describe("Model parameters and other core functions", function() {
           expect(err).toEqual(null);
           done();
         });
+      })
+
+      beforeEach( function() {
+        PersonalFinanceEngine.deleteUserSelectedEndDate();
+      })
+
+      afterAll( function(done) {
+        PersonalFinanceEngine.deleteInvestment(investmentID)
+          .then( function() {
+              done();
+          })
+          .catch( function(err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            expect(err).toEqual(null);
+            done();
+          });
       })
 
       it("should have a method called setUserSelectedEndDate on the PersonalFinanceEngine scope", function() {
@@ -134,10 +153,11 @@ describe("Model parameters and other core functions", function() {
       var investmentInput2;
       var investmentID2;
       var recurringTransferInput;
+      var recurringTransferID;
       var expectedMinDate = new Date("1970-01-01");
       var expectedMaxDate = new Date("1975-01-01");
 
-      beforeEach( function(done) {
+      beforeAll( function(done) {
         investmentInput1 = {
           name: "Test",
           subType: "",
@@ -175,9 +195,29 @@ describe("Model parameters and other core functions", function() {
             };
             return PersonalFinanceEngine.createRecurringTransfer(recurringTransferInput);
           })
-          .then( function(returnID){
-            recurringTranferID = returnID;
+          .then( function(returnID) {
+            recurringTransferID = returnID;
             done();
+          })
+          .catch( function(err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            expect(err).toEqual(null);
+            done();
+          });
+      })
+
+      afterAll( function(done) {
+        PersonalFinanceEngine.deleteInvestment(investmentID1)
+          .then( function() {
+            return PersonalFinanceEngine.deleteInvestment(investmentID2);
+          })
+          .then( function () {
+            return PersonalFinanceEngine.deleteTransfer(recurringTransferID);
+          })
+          .then( function() {
+              done();
           })
           .catch( function(err) {
             if (err.name !== "InvalidInputError") {

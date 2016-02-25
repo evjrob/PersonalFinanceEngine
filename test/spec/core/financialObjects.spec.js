@@ -1,3 +1,4 @@
+"use strict";
 describe("FinancialObject public methods and constructors", function() {
 
   it("should have a chequingAccount object on the PersonalFinanceEngine scope.", function() {
@@ -15,6 +16,8 @@ describe("FinancialObject public methods and constructors", function() {
 
       var assetInput;
       var assetID;
+      var laterAssetInput;
+      var laterAssetID;
       var initialTransferID;
       var err;
 
@@ -48,6 +51,10 @@ describe("FinancialObject public methods and constructors", function() {
             expect(returnID).toBeDefined();
             expect(PersonalFinanceEngine.assets[returnID].associatedTransfers.length).toBeGreaterThan(0);
             expect(PersonalFinanceEngine.assets[returnID].associatedTransfers).toContain(PersonalFinanceEngine.assets[returnID].initialTransferID);
+
+            return PersonalFinanceEngine.deleteAsset(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function(err) {
@@ -63,6 +70,10 @@ describe("FinancialObject public methods and constructors", function() {
         PersonalFinanceEngine.createAsset(assetInput)
           .then( function(returnID) {
             expect(PersonalFinanceEngine.assets[returnID].ID).toEqual(returnID);
+
+            return PersonalFinanceEngine.deleteAsset(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function(err) {
@@ -80,6 +91,10 @@ describe("FinancialObject public methods and constructors", function() {
             expect(PersonalFinanceEngine.assets[returnID].ID).toEqual(returnID);
             initialTransferID = PersonalFinanceEngine.assets[returnID].initialTransferID;
             expect(PersonalFinanceEngine.__test__.transferDefinitions[initialTransferID].toAccount).toEqual(PersonalFinanceEngine.assets[returnID]);
+
+            return PersonalFinanceEngine.deleteAsset(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function(err) {
@@ -180,7 +195,6 @@ describe("FinancialObject public methods and constructors", function() {
       });
 
       it("should return an error object identifying the fromAccount as an issue when the startDate on fromAccount is later than this asset's startDate", function(done) {
-        var laterAssetID;
         PersonalFinanceEngine.createAsset(laterAssetInput)
           .then( function(returnID) {
             laterAssetID = returnID;
@@ -190,7 +204,6 @@ describe("FinancialObject public methods and constructors", function() {
           .then( function(returnID) {
             assetID = returnID;
             expect(assetID).not.toBeDefined();
-            done();
           })
           .catch( function(err) {
             if (err.name !== "InvalidInputError") {
@@ -203,8 +216,16 @@ describe("FinancialObject public methods and constructors", function() {
             expect(err.failedInputs.fromAccount).toEqual(true);
             expect(err.failedInputs.initialValue).toEqual(false);
             expect(err.failedInputs.accrualRate).toEqual(false);
+          })
+          .then( function() {
+            return PersonalFinanceEngine.deleteAsset(laterAssetID);
+          })
+          .then( function() {
+            return PersonalFinanceEngine.deleteAsset(assetID);
+          })
+          .then( function() {
             done();
-          });
+          })
       });
 
       it("should return an error object identifying the initialValue as an issue when the input contains a bad initialValue", function(done) {
@@ -277,6 +298,7 @@ describe("FinancialObject public methods and constructors", function() {
     describe("editAsset()", function() {
 
       var assetInput;
+      var newAssetInput;
       var badAssetInput;
       var assetID;
       var edittedAssetID;
@@ -319,6 +341,10 @@ describe("FinancialObject public methods and constructors", function() {
             edittedAssetID = returnID;
             expect(edittedAssetID).toBeDefined();
             expect(edittedAssetID).toEqual(assetID);
+
+            return PersonalFinanceEngine.deleteAsset(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function(err) {
@@ -343,6 +369,10 @@ describe("FinancialObject public methods and constructors", function() {
             expect(PersonalFinanceEngine.assets[edittedAssetID].subType).toEqual(newAssetInput.subType);
             expect(PersonalFinanceEngine.assets[edittedAssetID].startDate).toEqual(newAssetInput.startDate);
             expect(PersonalFinanceEngine.assets[edittedAssetID].accrualRate).toEqual(newAssetInput.accrualRate);
+
+            return PersonalFinanceEngine.deleteAsset(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function(err) {
@@ -365,6 +395,10 @@ describe("FinancialObject public methods and constructors", function() {
             expect(PersonalFinanceEngine.assets[returnID].ID).toEqual(returnID);
             initialTransferID = PersonalFinanceEngine.assets[returnID].initialTransferID;
             expect(PersonalFinanceEngine.__test__.transferDefinitions[initialTransferID].toAccount).toEqual(PersonalFinanceEngine.assets[returnID]);
+
+            return PersonalFinanceEngine.deleteAsset(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function(err) {
@@ -386,7 +420,6 @@ describe("FinancialObject public methods and constructors", function() {
           .then( function(returnID) {
             edittedAssetID = returnID;
             expect(edittedAssetID).not.toBeDefined();
-            done();
           })
           .catch( function(err) {
             if (err.name !== "InvalidInputError") {
@@ -399,8 +432,13 @@ describe("FinancialObject public methods and constructors", function() {
             expect(err.failedInputs.fromAccount).toEqual(true);
             expect(err.failedInputs.initialValue).toEqual(true);
             expect(err.failedInputs.accrualRate).toEqual(true);
+          })
+          .then( function () {
+            return PersonalFinanceEngine.deleteAsset(assetID);
+          })
+          .then(function(){
             done();
-          });
+          })
       });
     });
 
@@ -489,9 +527,7 @@ describe("FinancialObject public methods and constructors", function() {
             .then( function(returnID){
               assetID2 = returnID;
               expect(PersonalFinanceEngine.assets[assetID2]).toBeDefined();
-              return PersonalFinanceEngine.createAsset(assetInput2);
-            })
-            .then( function() {
+
               transferInput = {
                 fromAccount: PersonalFinanceEngine.assets[assetID1],
                 toAccount: PersonalFinanceEngine.assets[assetID2],
@@ -507,6 +543,10 @@ describe("FinancialObject public methods and constructors", function() {
             })
             .then( function(returnID) {
               expect(PersonalFinanceEngine.__test__.transferDefinitions[transferID].fromAccount).toEqual("external");
+
+              return PersonalFinanceEngine.deleteAsset(assetID2);
+            })
+            .then(function(){
               done();
             })
             .catch( function(err) {
@@ -528,9 +568,7 @@ describe("FinancialObject public methods and constructors", function() {
             .then( function(returnID){
               assetID2 = returnID;
               expect(PersonalFinanceEngine.assets[assetID2]).toBeDefined();
-              return PersonalFinanceEngine.createAsset(assetInput2);
-            })
-            .then( function() {
+
               transferInput = {
                 fromAccount: PersonalFinanceEngine.assets[assetID1],
                 toAccount: "external",
@@ -546,6 +584,10 @@ describe("FinancialObject public methods and constructors", function() {
             })
             .then( function(returnID) {
               expect(PersonalFinanceEngine.__test__.transferDefinitions[transferID]).not.toBeDefined();
+
+              return PersonalFinanceEngine.deleteAsset(assetID2);
+            })
+            .then(function(){
               done();
             })
             .catch( function(err) {
@@ -610,6 +652,11 @@ describe("FinancialObject public methods and constructors", function() {
             expect(investmentID).toBeDefined();
             expect(PersonalFinanceEngine.investmentAccounts[returnID].associatedTransfers.length).toBeGreaterThan(0);
             expect(PersonalFinanceEngine.investmentAccounts[returnID].associatedTransfers).toContain(PersonalFinanceEngine.investmentAccounts[returnID].initialTransferID);
+            expect(PersonalFinanceEngine.investmentAccounts[returnID].associatedTransfers).toContain(PersonalFinanceEngine.investmentAccounts[returnID].accrualTransferID);
+
+            return PersonalFinanceEngine.deleteInvestment(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function(err) {
@@ -626,6 +673,10 @@ describe("FinancialObject public methods and constructors", function() {
           .then( function(returnID) {
             investmentID = returnID;
             expect(PersonalFinanceEngine.investmentAccounts[investmentID].ID).toEqual(investmentID);
+
+            return PersonalFinanceEngine.deleteInvestment(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function(err) {
@@ -646,6 +697,10 @@ describe("FinancialObject public methods and constructors", function() {
             accrualTransferID = PersonalFinanceEngine.investmentAccounts[investmentID].accrualTransferID;
             expect(PersonalFinanceEngine.__test__.transferDefinitions[initialTransferID].toAccount).toEqual(PersonalFinanceEngine.investmentAccounts[investmentID]);
             expect(PersonalFinanceEngine.__test__.transferDefinitions[accrualTransferID].toAccount).toEqual(PersonalFinanceEngine.investmentAccounts[investmentID]);
+
+            return PersonalFinanceEngine.deleteInvestment(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function(err) {
@@ -755,7 +810,6 @@ describe("FinancialObject public methods and constructors", function() {
       });
 
       it("should return an error object identifying the fromAccount as an issue when the startDate on fromAccount is later than this investment's startDate", function(done) {
-        var laterInvestmentID;
         PersonalFinanceEngine.createInvestment(laterInvestmentInput)
           .then( function(returnID) {
             laterInvestmentID = returnID;
@@ -765,7 +819,6 @@ describe("FinancialObject public methods and constructors", function() {
           .then( function(returnID) {
             investmentID = returnID;
             expect(investmentID).not.toBeDefined();
-            done();
           })
           .catch( function(err) {
             if (err.name !== "InvalidInputError") {
@@ -778,8 +831,16 @@ describe("FinancialObject public methods and constructors", function() {
             expect(err.failedInputs.fromAccount).toEqual(true);
             expect(err.failedInputs.initialValue).toEqual(false);
             expect(err.failedInputs.accrualRate).toEqual(false);
+          })
+          .then( function() {
+            return PersonalFinanceEngine.deleteInvestment(laterInvestmentID);
+          })
+          .then( function() {
+            return PersonalFinanceEngine.deleteInvestment(investmentID);
+          })
+          .then( function() {
             done();
-          });
+          })
       });
 
       it("should return an error object identifying the initialValue as an issue when the input contains a bad initialValue", function(done) {
@@ -928,6 +989,10 @@ describe("FinancialObject public methods and constructors", function() {
             edittedInvestmentID = returnID;
             expect(edittedInvestmentID).toBeDefined();
             expect(edittedInvestmentID).toEqual(investmentID);
+
+            return PersonalFinanceEngine.deleteInvestment(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function(err) {
@@ -953,6 +1018,10 @@ describe("FinancialObject public methods and constructors", function() {
             expect(PersonalFinanceEngine.investmentAccounts[investmentID].subType).toEqual(newInvestmentInput.subType);
             expect(PersonalFinanceEngine.investmentAccounts[investmentID].startDate).toEqual(newInvestmentInput.startDate);
             expect(PersonalFinanceEngine.investmentAccounts[investmentID].accrualRate).toEqual(newInvestmentInput.accrualRate);
+
+            return PersonalFinanceEngine.deleteInvestment(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -976,6 +1045,10 @@ describe("FinancialObject public methods and constructors", function() {
             accrualTransferID = PersonalFinanceEngine.investmentAccounts[investmentID].accrualTransferID;
             expect(PersonalFinanceEngine.__test__.transferDefinitions[initialTransferID].toAccount).toEqual(PersonalFinanceEngine.investmentAccounts[investmentID]);
             expect(PersonalFinanceEngine.__test__.transferDefinitions[accrualTransferID].toAccount).toEqual(PersonalFinanceEngine.investmentAccounts[investmentID]);
+
+            return PersonalFinanceEngine.deleteInvestment(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -995,7 +1068,6 @@ describe("FinancialObject public methods and constructors", function() {
           })
           .then( function(returnID) {
             expect(returnID).not.toBeDefined();
-            done();
           })
           .catch( function (err) {
             if (err.name !== "InvalidInputError") {
@@ -1009,8 +1081,13 @@ describe("FinancialObject public methods and constructors", function() {
             expect(err.failedInputs.initialValue).toEqual(true);
             expect(err.failedInputs.accrualRate).toEqual(true);
             expect(err.failedInputs.accrualPaymentFrequency).toEqual(true);
+          })
+          .then( function () {
+            return PersonalFinanceEngine.deleteInvestment(investmentID);
+          })
+          .then(function(){
             done();
-          });
+          })
       });
     });
 
@@ -1114,6 +1191,10 @@ describe("FinancialObject public methods and constructors", function() {
             .then( function(returnID) {
               expect(returnID).toEqual(null);
               expect(PersonalFinanceEngine.__test__.transferDefinitions[transferID].fromAccount).toEqual("external");
+
+              return PersonalFinanceEngine.deleteInvestment(investmentID2);
+            })
+            .then(function(){
               done();
             })
             .catch( function (err) {
@@ -1149,6 +1230,10 @@ describe("FinancialObject public methods and constructors", function() {
             .then( function(returnID) {
               expect(returnID).toEqual(null);
               expect(PersonalFinanceEngine.__test__.transferDefinitions[transferID]).not.toBeDefined();
+
+              return PersonalFinanceEngine.deleteInvestment(investmentID1);
+            })
+            .then(function(){
               done();
             })
             .catch( function (err) {
@@ -1176,6 +1261,8 @@ describe("FinancialObject public methods and constructors", function() {
       var laterDebtInput;
       var debtID;
       var laterDebtID;
+      var initialTransferID;
+      var accrualTransferID;
       var err;
 
       beforeEach(function() {
@@ -1211,6 +1298,11 @@ describe("FinancialObject public methods and constructors", function() {
             expect(debtID).toBeDefined();
             expect(PersonalFinanceEngine.debtAccounts[returnID].associatedTransfers.length).toBeGreaterThan(0);
             expect(PersonalFinanceEngine.debtAccounts[returnID].associatedTransfers).toContain(PersonalFinanceEngine.debtAccounts[returnID].initialTransferID);
+            expect(PersonalFinanceEngine.debtAccounts[returnID].associatedTransfers).toContain(PersonalFinanceEngine.debtAccounts[returnID].accrualTransferID);
+
+            return PersonalFinanceEngine.deleteDebt(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -1227,6 +1319,10 @@ describe("FinancialObject public methods and constructors", function() {
           .then( function (returnID) {
             debtID = returnID;
             expect(PersonalFinanceEngine.debtAccounts[debtID].ID).toEqual(debtID);
+
+            return PersonalFinanceEngine.deleteDebt(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -1247,6 +1343,10 @@ describe("FinancialObject public methods and constructors", function() {
             accrualTransferID = PersonalFinanceEngine.debtAccounts[debtID].accrualTransferID;
             expect(PersonalFinanceEngine.__test__.transferDefinitions[initialTransferID].toAccount).toEqual(PersonalFinanceEngine.debtAccounts[debtID]);
             expect(PersonalFinanceEngine.__test__.transferDefinitions[accrualTransferID].toAccount).toEqual(PersonalFinanceEngine.debtAccounts[debtID]);
+
+            return PersonalFinanceEngine.deleteDebt(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -1356,7 +1456,6 @@ describe("FinancialObject public methods and constructors", function() {
       });
 
       it("should return an error object identifying the fromAccount as an issue when the startDate on fromAccount is later than this debt's startDate", function(done) {
-        var laterDebtID;
         PersonalFinanceEngine.createDebt(laterDebtInput)
           .then( function(returnID) {
             laterDebtID = returnID;
@@ -1366,7 +1465,6 @@ describe("FinancialObject public methods and constructors", function() {
           .then( function(returnID) {
             debtID = returnID;
             expect(debtID).not.toBeDefined();
-            done();
           })
           .catch( function(err) {
             if (err.name !== "InvalidInputError") {
@@ -1379,8 +1477,16 @@ describe("FinancialObject public methods and constructors", function() {
             expect(err.failedInputs.fromAccount).toEqual(true);
             expect(err.failedInputs.initialValue).toEqual(false);
             expect(err.failedInputs.accrualRate).toEqual(false);
+          })
+          .then( function() {
+            return PersonalFinanceEngine.deleteDebt(laterDebtID);
+          })
+          .then( function() {
+            return PersonalFinanceEngine.deleteDebt(debtID);
+          })
+          .then( function() {
             done();
-          });
+          })
       });
 
       it("should return an error object identifying the initialValue as an issue when the input contains a bad initialValue", function(done) {
@@ -1463,6 +1569,8 @@ describe("FinancialObject public methods and constructors", function() {
       var badDebtInput;
       var debtID;
       var edittedDebtID;
+      var initialTransferID;
+      var accrualTransferID;
       var err;
 
       beforeEach(function() {
@@ -1504,6 +1612,10 @@ describe("FinancialObject public methods and constructors", function() {
             edittedDebtID = returnID;
             expect(edittedDebtID).toBeDefined();
             expect(edittedDebtID).toEqual(debtID);
+
+            return PersonalFinanceEngine.deleteDebt(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -1528,6 +1640,10 @@ describe("FinancialObject public methods and constructors", function() {
             expect(PersonalFinanceEngine.debtAccounts[debtID].subType).toEqual(newDebtInput.subType);
             expect(PersonalFinanceEngine.debtAccounts[debtID].startDate).toEqual(newDebtInput.startDate);
             expect(PersonalFinanceEngine.debtAccounts[debtID].accrualRate).toEqual(newDebtInput.accrualRate);
+
+            return PersonalFinanceEngine.deleteDebt(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -1551,6 +1667,10 @@ describe("FinancialObject public methods and constructors", function() {
             accrualTransferID = PersonalFinanceEngine.debtAccounts[debtID].accrualTransferID;
             expect(PersonalFinanceEngine.__test__.transferDefinitions[initialTransferID].toAccount).toEqual(PersonalFinanceEngine.debtAccounts[debtID]);
             expect(PersonalFinanceEngine.__test__.transferDefinitions[accrualTransferID].toAccount).toEqual(PersonalFinanceEngine.debtAccounts[debtID]);
+
+            return PersonalFinanceEngine.deleteDebt(returnID);
+          })
+          .then(function(){
             done();
           })
           .catch( function (err) {
@@ -1571,7 +1691,6 @@ describe("FinancialObject public methods and constructors", function() {
           })
           .then( function (returnID) {
             expect(returnID).not.toBeDefined();
-            done();
           })
           .catch( function (err) {
             if (err.name !== "InvalidInputError") {
@@ -1585,8 +1704,13 @@ describe("FinancialObject public methods and constructors", function() {
             expect(err.failedInputs.initialValue).toEqual(true);
             expect(err.failedInputs.accrualRate).toEqual(true);
             expect(err.failedInputs.accrualPaymentFrequency).toEqual(true);
+          })
+          .then( function () {
+            return PersonalFinanceEngine.deleteDebt(debtID);
+          })
+          .then(function(){
             done();
-          });
+          })
       });
     });
 
@@ -1693,6 +1817,10 @@ describe("FinancialObject public methods and constructors", function() {
             .then( function(returnID) {
               expect(returnID).toEqual(null);
               expect(PersonalFinanceEngine.__test__.transferDefinitions[transferID].fromAccount).toEqual("external");
+
+              return PersonalFinanceEngine.deleteDebt(debtID2);
+            })
+            .then(function(){
               done();
             })
             .catch( function (err) {
@@ -1731,6 +1859,10 @@ describe("FinancialObject public methods and constructors", function() {
             .then( function(returnID) {
               expect(returnID).toEqual(null);
               expect(PersonalFinanceEngine.__test__.transferDefinitions[transferID]).not.toBeDefined();
+
+              return PersonalFinanceEngine.deleteDebt(debtID2);
+            })
+            .then(function(){
               done();
             })
             .catch( function (err) {
