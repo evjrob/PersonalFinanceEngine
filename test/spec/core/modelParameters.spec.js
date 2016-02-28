@@ -1,7 +1,7 @@
 "use strict";
 describe("Model parameters and other core functions", function() {
 
-  describe("modelParameters", function() {
+  describe("modelParameters properties", function() {
 
     it("should have a modelParameters object on the PersonalFinanceEngine scope.", function() {
       expect(PersonalFinanceEngine.modelParameters).toEqual(jasmine.any(Object));
@@ -26,6 +26,10 @@ describe("Model parameters and other core functions", function() {
     it("should have a property called userHasSelectedEndDate on modelParameters", function() {
       expect(PersonalFinanceEngine.modelParameters.userHasSelectedEndDate).toBeDefined();
     });
+
+    it("should have a property called dataTableRecordFrequency on modelParameters", function() {
+      expect(PersonalFinanceEngine.modelParameters.dataTableRecordFrequency).toBeDefined();
+    })
   });
 
   describe("date functions", function() {
@@ -245,6 +249,53 @@ describe("Model parameters and other core functions", function() {
       it("should return the expectedMaxDate when findMaxDate is called", function() {
         expect(PersonalFinanceEngine.__test__.findMaxDate().isSame(moment(expectedMaxDate))).toEqual(true);
       });
+    });
+  });
+
+  describe("Recording Frequency functions", function() {
+
+    afterAll( function(done) {
+      PersonalFinanceEngine.setDataTableRecordFrequency("Annually")
+        .then( function() {
+          done();
+        })
+    })
+
+    it("should have a function called setDataTableRecordFrequency() on the PersonalFinanceEngine scope", function() {
+      expect(PersonalFinanceEngine.setDataTableRecordFrequency).toEqual(jasmine.any(Function));
+    })
+
+    it("should allow the user to set dataTableRecordFrequency using the function setDataTableRecordFrequency()", function(done) {
+      expect(PersonalFinanceEngine.modelParameters.dataTableRecordFrequency).toEqual("Annually");
+
+      PersonalFinanceEngine.setDataTableRecordFrequency("Annually")
+        .then( function() {
+          expect(PersonalFinanceEngine.modelParameters.dataTableRecordFrequency).toEqual("Annually");
+
+          return PersonalFinanceEngine.setDataTableRecordFrequency("Semiannually");
+        })
+        .then( function() {
+          expect(PersonalFinanceEngine.modelParameters.dataTableRecordFrequency).toEqual("Semiannually");
+
+          return PersonalFinanceEngine.setDataTableRecordFrequency("Quarterly");
+        })
+        .then( function() {
+          expect(PersonalFinanceEngine.modelParameters.dataTableRecordFrequency).toEqual("Quarterly");
+
+          return PersonalFinanceEngine.setDataTableRecordFrequency("Monthly");
+        })
+        .then( function() {
+          expect(PersonalFinanceEngine.modelParameters.dataTableRecordFrequency).toEqual("Monthly");
+
+          done();
+        })
+        .catch( function(err) {
+          if (err.name !== "InvalidInputError") {
+            throw err;
+          };
+          expect(err).toEqual(null);
+          done();
+        });
     });
   });
 

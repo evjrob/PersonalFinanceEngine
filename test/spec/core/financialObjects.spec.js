@@ -1918,6 +1918,7 @@ describe("FinancialObject public methods and constructors", function() {
       expect(testObject.initialValue).toEqual(1000);
       expect(testObject.value).toEqual(0);
       expect(testObject.accrualRate).toEqual(0.05);
+      expect(testObject.currentPeriodNetAccruals).toEqual(0);
       expect(testObject.currentYearNetAccruals).toEqual(0);
       expect(testObject.dataTable).toBeDefined();
       expect(testObject.associatedTransfers).toBeDefined();

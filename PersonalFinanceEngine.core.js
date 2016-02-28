@@ -20,12 +20,12 @@
 
   var validFrequencies = ["Annually", "Semiannually", "Quarterly", "Monthly", "Biweekly", "Weekly"];
   var momentIntervalLookup = {
-    "Annually": {interval: "years", multiplier: 1},
-    "Semiannually": {interval: "quarters", multiplier: 2},
-    "Quarterly": {interval: "quarters", multiplier: 1},
-    "Monthly": {interval: "months", multiplier: 1},
-    "Biweekly": {interval: "weeks", multiplier: 2},
-    "Weekly": {interval: "weeks", multiplier: 1},
+    "Annually": {interval: "years", singularInterval: "year", multiplier: 1},
+    "Semiannually": {interval: "quarters", singularInterval: "quarter", multiplier: 2},
+    "Quarterly": {interval: "quarters", singularInterval: "quarter", multiplier: 1},
+    "Monthly": {interval: "months", singularInterval: "month", multiplier: 1},
+    "Biweekly": {interval: "weeks", singularInterval: "week", multiplier: 2},
+    "Weekly": {interval: "weeks", singularInterval: "week", multiplier: 1},
   }
 
   // A function to convert javascript date ojects in inputs to moment objects
@@ -144,6 +144,29 @@
     return promise
   }
 
+  // A function to set the frequency of dataTable recording to one in the momentIntervalLookup
+  function setDataTableRecordFrequency(inputFrequency) {
+
+    var promise = new Promise(
+      function (resolve, reject) {
+
+        // If it's a valid frequency (except weekly or biweekly: they don't
+        // play well with years for tax purposes)
+        if (validateFrequency(inputFrequency) && inputFrequency !== "Weekly" && inputFrequency !== "Biweekly") {
+
+          modelParameters.dataTableRecordFrequency = inputFrequency;
+
+          resolve();
+        } else {
+
+          var err = new InvalidInputError("Inputs failed validation", {frequency: true});
+          reject(err);
+        }
+      });
+
+    return promise;
+  }
+
   // Constructors for the parent Financial Object type and it's children types.
   // An init object passed to it to provide the values for initialization
   // These functions are private as a helper function for each is ecxpected to
@@ -155,9 +178,10 @@
     this.startDate = init.startDate;      // The startDate for when the initialValue object should clear on the timeline.
     this.initialValue = init.initialValue;
     this.initialTransferID = "",
-    this.value = 0;                       //  The value is zero until the initialValue object on the timeline creates the principle
+    this.value = 0;                       // The value is zero until the initialValue object on the timeline creates the principal
     this.accrualRate = init.accrualRate;  // The annual accrual rate of interest or appreciation or depreciation.
-    this.currentYearNetAccruals = 0;      // The realized accruals that have occured this year.
+    this.currentPeriodNetAccruals = 0;    // The realized accruals that have occured this recording period.
+    this.currentYearNetAccruals = 0;      // The accruals for this calendar year (for tax purposes if positive)
     this.dataTable = [];
     this.associatedTransfers = [];        // An array for the associated transferIDs that occur in userDefinedTransfers
   };
@@ -237,7 +261,7 @@
           var initialTransfer = {
             fromAccount: assets[assetID].fromAccount,
             toAccount: assets[assetID],
-            valueFunction: function(){return assets[assetID].initialValue;},
+            valueFunction: function(){return asset.initialValue;},
             date: assets[assetID].startDate,
           };
 
@@ -298,7 +322,7 @@
           var initialTransfer = {
             fromAccount: assets[assetID].fromAccount,
             toAccount: assets[assetID],
-            valueFunction: function(){return assets[assetID].initialValue;},
+            valueFunction: function(){return asset.initialValue;},
             date: assets[assetID].startDate,
           };
 
@@ -360,7 +384,7 @@
           var initialTransfer = {
             fromAccount: investmentAccounts[investmentID].fromAccount,
             toAccount: investmentAccounts[investmentID],
-            valueFunction: function(){return investmentAccounts[investmentID].initialValue;},
+            valueFunction: function(){return investment.initialValue;},
             date: investmentAccounts[investmentID].startDate,
           };
 
@@ -368,8 +392,8 @@
             fromAccount: "external",
             toAccount: investmentAccounts[investmentID],
             valueFunction: function(){
-              var amount = investmentAccounts[investmentID]['accrualBuffer'];
-              investmentAccounts[investmentID].accrualBuffer = 0;
+              var amount = investment['accrualBuffer'];
+              investment.accrualBuffer = 0;
               return amount;
             },
             startDate: investmentAccounts[investmentID].startDate,
@@ -438,7 +462,7 @@
           var initialTransfer = {
             fromAccount: investmentAccounts[investmentID].fromAccount,
             toAccount: investmentAccounts[investmentID],
-            valueFunction: function(){return investmentAccounts[investmentID].initialValue;},
+            valueFunction: function(){return investment.initialValue;},
             date: investmentAccounts[investmentID].startDate,
           };
 
@@ -446,8 +470,8 @@
             fromAccount: "external",
             toAccount: investmentAccounts[investmentID],
             valueFunction: function(){
-              var amount = investmentAccounts[investmentID]['accrualBuffer'];
-              investmentAccounts[investmentID].accrualBuffer = 0;
+              var amount = investment['accrualBuffer'];
+              investment.accrualBuffer = 0;
               return amount;
             },
             startDate: investmentAccounts[investmentID].startDate,
@@ -517,7 +541,7 @@
           var initialTransfer = {
             fromAccount: debtAccounts[debtID].fromAccount,
             toAccount: debtAccounts[debtID],
-            valueFunction: function(){return debtAccounts[debtID].initialValue;},
+            valueFunction: function(){return debt.initialValue;},
             date: debtAccounts[debtID].startDate,
           };
 
@@ -525,8 +549,8 @@
             fromAccount: "external",
             toAccount: debtAccounts[debtID],
             valueFunction: function(){
-              var amount = debtAccounts[debtID]['accrualBuffer'];
-              debtAccounts[debtID].accrualBuffer = 0;
+              var amount = debt['accrualBuffer'];
+              debt.accrualBuffer = 0;
               return amount;
             },
             startDate: debtAccounts[debtID].startDate,
@@ -595,7 +619,7 @@
           var initialTransfer = {
             fromAccount: debtAccounts[debtID].fromAccount,
             toAccount: debtAccounts[debtID],
-            valueFunction: function(){return debtAccounts[debtID].initialValue;},
+            valueFunction: function(){return debt.initialValue;},
             date: debtAccounts[debtID].startDate,
           };
 
@@ -603,8 +627,8 @@
             fromAccount: "external",
             toAccount: debtAccounts[debtID],
             valueFunction: function(){
-              var amount = debtAccounts[debtID]['accrualBuffer'];
-              debtAccounts[debtID].accrualBuffer = 0;
+              var amount = debt['accrualBuffer'];
+              debt.accrualBuffer = 0;
               return amount;
             },
             startDate: debtAccounts[debtID].startDate,
@@ -971,6 +995,7 @@
     timelineEndDate: new moment(),
     userHasSelectedEndDate: false,
     userSelectedEndDate: new moment(),
+    dataTableRecordFrequency: "Annually",
   };
   var locale = {
     Country: "Canada",
@@ -1021,16 +1046,55 @@
   function constructTimeline() {
 
     // Reset the timeline
-    this.timeline = {};
+    PersonalFinanceEngine.timeline = {};
 
     // Get the minimum and maximum dates to populate over
     var minDate = modelParameters.timelineStartDate;
     var maxDate = modelParameters.timelineEndDate;
 
-    // Fill in date entries for the regular periods like December 31st for taxes,
-    // for reporting dates. Eg. every dec 31st, last day of every month, etc. depending.
+    // Fill in date entries for important recording dates:
+    // Start wth our timelineStartDate and timelineEndDate
+    if (!timeline[minDate.format(timelineDateFormat)]) {
+      timeline[minDate.format(timelineDateFormat)] = {
+        recordThisDate: true,
+        transfers: [],
+      };
+    } else {
+      timeline[minDate.format(timelineDateFormat)].recordThisDate = true;
+    }
 
-    // Regular contributions and interest deposits, or other user defined transfers etc that occur between min and max dates.
+    if (!timeline[maxDate.format(timelineDateFormat)]) {
+      timeline[maxDate.format(timelineDateFormat)] = {
+        recordThisDate: true,
+        transfers: [],
+      };
+    } else {
+      timeline[maxDate.format(timelineDateFormat)].recordThisDate = true;
+    }
+
+    // And reguar points in between like the end of the month or december 31st, important tax dates, etc.
+    var momentInterval = momentIntervalLookup[PersonalFinanceEngine.modelParameters.dataTableRecordFrequency].interval;
+    var singularInterval = momentIntervalLookup[PersonalFinanceEngine.modelParameters.dataTableRecordFrequency].singularInterval;
+    var multiplier = momentIntervalLookup[PersonalFinanceEngine.modelParameters.dataTableRecordFrequency].multiplier;
+
+    for (var i = 0; i <= maxDate.diff(minDate, momentInterval)/multiplier; i++) {
+
+      // Make a moment object for this key date
+      var keyDate = moment(minDate).add(i*multiplier, momentInterval).endOf(singularInterval);
+
+      // Create the timeline date if it does not already exist
+      if (!timeline[keyDate.format(timelineDateFormat)]) {
+        timeline[keyDate.format(timelineDateFormat)] = {
+          recordThisDate: true,
+          transfers: [],
+        };
+      } else {
+        timeline[keyDate.format(timelineDateFormat)].recordThisDate = true;
+      }
+    }
+
+    // Now for the transfers themselves:
+    // Regular and onetime transfers that occur between min and max dates including contributions and interest deposits, etc.
     for (var transferID in transferDefinitions) {
       // Get the ref instead of addressing the property repeatedly
       var currentTransferDef = transferDefinitions[transferID];
@@ -1042,11 +1106,18 @@
         if (currentTransferDef.date.isSameOrAfter(minDate) && currentTransferDef.date.isSameOrBefore(maxDate)) {
           // Create the timeline date if it does not already exist
           if (!timeline[currentTransferDef.date.format(timelineDateFormat)]) {
-            timeline[currentTransferDef.date.format(timelineDateFormat)] = [];
+            timeline[currentTransferDef.date.format(timelineDateFormat)] = {
+              recordThisDate: false,
+              transfers: [],
+            };
           }
 
           // Append this transfer defiition's value function
-          timeline[currentTransferDef.date.format(timelineDateFormat)].push(currentTransferDef.valueFunction);
+          timeline[currentTransferDef.date.format(timelineDateFormat)].transfers.push({
+            fromAccount: currentTransferDef.fromAccount,
+            toAccount: currentTransferDef.toAccount,
+            valueFunction: currentTransferDef.valueFunction
+          });
         }
 
       } else if (currentTransferDef.type === "Recurring") {
@@ -1063,10 +1134,7 @@
           }
 
           var momentInterval = momentIntervalLookup[currentTransferDef.frequency].interval;
-          //console.log(currentTransferDef.frequency+" : "+momentInterval);
           var multiplier = momentIntervalLookup[currentTransferDef.frequency].multiplier;
-          //console.log(multiplier+" : "+multiplier);
-
 
           // Iterate over the interval
           for (var i = 0; i <= currentEndDate.diff(currentTransferDef.startDate, momentInterval)/multiplier; i++) {
@@ -1076,12 +1144,18 @@
 
             // Create the timeline date if it does not already exist
             if (!timeline[keyDate.format(timelineDateFormat)]) {
-              timeline[keyDate.format(timelineDateFormat)] = [];
+              timeline[keyDate.format(timelineDateFormat)] = {
+                recordThisDate: false,
+                transfers: [],
+              };
             }
 
             // Append this transfer defiition's value function
-            timeline[keyDate.format(timelineDateFormat)].push(currentTransferDef.valueFunction);
-
+            timeline[keyDate.format(timelineDateFormat)].transfers.push({
+              fromAccount: currentTransferDef.fromAccount,
+              toAccount: currentTransferDef.toAccount,
+              valueFunction: currentTransferDef.valueFunction
+            });
           }
         }
       }
@@ -1110,15 +1184,144 @@
 
     constructTimeline();
 
-    // Turn the properties of the timeline into an array of date strings
+    var promise = new Promise(
+      function (resolve, reject) {
 
-    // Sort the date string array using the builtin sort method
+        // reset all of the properties of the financialObjects
+        for (var assetID in assets) {
+          assets[assetID].value = 0;
+          assets[assetID].currentPeriodNetAccruals = 0;
+          assets[assetID].dataTable = [];
+        }
 
-    // For all dates in timeline in order {
-      // Calculate interest/ accruals on all financialObjects
-      // Clear all scheduled transactions
-    // }
-    // Push a row into the dataTable if necessary
+        for (var investmentID in investmentAccounts) {
+          investmentAccounts[investmentID].value = 0;
+          investmentAccounts[investmentID].currentPeriodNetAccruals = 0;
+          investmentAccounts[investmentID].accrualBuffer = 0;
+          investmentAccounts[investmentID].dataTable = [];
+        }
+
+        for (var debtID in debtAccounts) {
+          debtAccounts[debtID].value = 0;
+          debtAccounts[debtID].currentPeriodNetAccruals = 0;
+          debtAccounts[debtID].accrualBuffer = 0;
+          debtAccounts[debtID].dataTable = [];
+        }
+
+        // Turn the properties of the timeline into an array of date strings
+        var dates = Object.keys(timeline);
+
+        // Sort the dates by comparing the getTime() values of their respective Date() objects.
+        dates.sort( function(a,b) {
+          return moment(a).isAfter(moment(b));
+        })
+
+        // For all dates in sorted order:
+        var keyDateCount = dates.length;
+        for (var i = 0; i < keyDateCount; i++) {
+
+          var thisDateString = dates[i];
+          var thisDate = moment.utc(dates[i]);
+          var lastDate;
+
+          if (i !== 0) {
+            lastDate = moment.utc(dates[i-1]);
+          } else {
+            lastDate = moment.utc(dates[i]);
+          }
+
+          var daysElapsed = thisDate.diff(lastDate, "days");
+
+          // Calculate accruals using standard daily compounding interest formula
+          // for each financial object we have in assets, investmentAccounts, debtAccounts:
+          // Daily interest is always assumed to be for a 365 day year. February 29th is a freebie.
+          if (thisDate.isSameOrBefore(modelParameters.timelineEndDate)) { // Only consider dates that are before our timelineEndDate
+            for (var assetID in assets) {
+              var accrualRate = assets[assetID].accrualRate;
+              var principal = assets[assetID].value;
+              var newValue = principal*Math.pow((1+(accrualRate/365)), daysElapsed);
+              var accrual = newValue - principal;
+              assets[assetID].currentPeriodNetAccruals = newValue;
+              assets[assetID].value += accrual; // assets don't get deposited interest, they implicitly appreciate or depreciate
+            }
+
+            for (var investmentID in investmentAccounts) {
+              var accrualRate = investmentAccounts[investmentID].accrualRate;
+              var principal = investmentAccounts[investmentID].value + investmentAccounts[investmentID].accrualBuffer;
+              var newValue = principal*Math.pow((1+(accrualRate/365)), daysElapsed);
+              var accrual = newValue - principal;
+              investmentAccounts[investmentID].currentPeriodNetAccruals += accrual;
+              investmentAccounts[investmentID].accrualBuffer += accrual; // investments are reliant on the accrualTransfer to deposit interest.
+            }
+
+            for (var debtID in debtAccounts) {
+              var accrualRate = debtAccounts[debtID].accrualRate;
+              var principal = debtAccounts[debtID].value + debtAccounts[debtID].accrualBuffer;
+              var newValue = principal*Math.pow((1+(accrualRate/365)), daysElapsed);
+              var accrual = newValue - principal;
+              debtAccounts[debtID].currentPeriodNetAccruals += accrual;
+              debtAccounts[debtID].accrualBuffer += accrual; // debts are reliant on the accrualTransfer to deposit interest.
+            }
+          }
+
+          // Apply all of the scheduled transactions
+          var transferCount = timeline[thisDateString].transfers.length;
+          for (var j = 0; j < transferCount; j++) {
+            var thisToAccount = timeline[thisDateString].transfers[j].toAccount;
+            var thisFromAccount = timeline[thisDateString].transfers[j].fromAccount;
+            var thisTransferAmount = timeline[thisDateString].transfers[j].valueFunction();
+
+            // A debt shouldnt be overpaid:
+            // See if there isn't a better place than here to accomplish this?
+            if (thisToAccount.type === "Debt") {
+              var outstandingDebt = thisToAccount.value + thisToAccount.accrualBuffer;
+
+              // Check that the outstanding debt is below zero and if the size of the transfer exceeds the debt
+              if ((outstandingDebt <= 0) && (thisTransferAmount > -1*outstandingDebt)) {
+                // Set the transfer to the outstanding debt value.
+                thisTransferAmount = -1*outstandingDebt;
+              }
+            }
+
+            transfer(thisFromAccount, thisToAccount, thisTransferAmount);
+          }
+
+          // Push a row into the dataTable of each financal object if necessary
+          if (timeline[thisDateString].recordThisDate) {
+            for (var assetID in assets) {
+              var thisValue = assets[assetID].value;
+              var thisPeriodAccruals = assets[assetID].currentPeriodNetAccruals;
+              var thisYearAccruals = assets[assetID].currentYearNetAccruals;
+              assets[assetID].dataTable.push({date: thisDate, value: thisValue, periodAccruals: thisPeriodAccruals, yearAccruals: thisYearAccruals});
+
+              // zero out the current accruals
+              assets[assetID].currentPeriodNetAccruals = 0;
+            }
+
+            for (var investmentID in investmentAccounts) {
+              var thisValue = investmentAccounts[investmentID].value;
+              var thisPeriodAccruals = investmentAccounts[investmentID].currentPeriodNetAccruals;
+              var thisYearAccruals = investmentAccounts[investmentID].currentYearNetAccruals;
+              investmentAccounts[investmentID].dataTable.push({date: thisDate, value: thisValue, periodAccruals: thisPeriodAccruals, yearAccruals: thisYearAccruals});
+
+              // zero out the current accruals
+              investmentAccounts[investmentID].currentPeriodNetAccruals = 0;
+            }
+
+            for (var debtID in debtAccounts) {
+              var thisValue = debtAccounts[debtID].value;
+              var thisPeriodAccruals = debtAccounts[debtID].currentPeriodNetAccruals;
+              var thisYearAccruals = debtAccounts[debtID].currentYearNetAccruals;
+              debtAccounts[debtID].dataTable.push({date: thisDate, value: thisValue, periodAccruals: thisPeriodAccruals, yearAccruals: thisYearAccruals});
+
+              // zero out the current accruals
+              debtAccounts[debtID].currentPeriodNetAccruals = 0;
+            }
+          }
+        }
+
+        resolve(true);
+      });
   }
 
 
@@ -1313,6 +1516,7 @@
   PersonalFinanceEngine.modelParameters = modelParameters;
   PersonalFinanceEngine.setUserSelectedEndDate = setUserSelectedEndDate;
   PersonalFinanceEngine.deleteUserSelectedEndDate = deleteUserSelectedEndDate;
+  PersonalFinanceEngine.setDataTableRecordFrequency = setDataTableRecordFrequency;
   PersonalFinanceEngine.locale = locale;
   PersonalFinanceEngine.personalDetails = personalDetails;
   PersonalFinanceEngine.chequingAccount = chequingAccount;

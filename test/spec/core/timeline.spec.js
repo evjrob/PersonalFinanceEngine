@@ -26,12 +26,14 @@ describe("Timeline and associated functions", function() {
       var oneTimeTranferID1;
       var oneTimeTranferID2;
       var oneTimeTranferID3;
+      var expectedRecordDate;
 
       beforeAll( function(done){
 
         assetDate = new Date("1970-01-01");
-        transferDate1 = new Date("1975-01-02");
+        transferDate1 = new Date("1975-12-31");
         transferDate2 = new Date("1972-06-15");
+        expectedRecordDate = new Date("1970-12-31");
 
         assetInput1 = {
           name: "Test1",
@@ -135,19 +137,28 @@ describe("Timeline and associated functions", function() {
         done();
       });
 
+      it("should have timeline properties for all of the data table recording dates (Dec 31 of each year) with a record flag of true", function (done) {
+        // Test the recurring dates
+        for (var i = 0; i <= moment(transferDate1).diff(moment.utc(expectedRecordDate), "years"); i++) {
+          expect(PersonalFinanceEngine.__test__.timeline[moment.utc(expectedRecordDate).add(i, "years").format(timelineDateFormat)]).toBeDefined();
+          expect(PersonalFinanceEngine.__test__.timeline[moment.utc(expectedRecordDate).add(i, "years").format(timelineDateFormat)].recordThisDate).toEqual(true);
+        }
+        done();
+      });
+
       // Need to figure out how to get the calculator cleared after each spec without the async ruining other specs.
       // This spec works on it's own but not when run with the rest and with the length expectations.
       it("should have the appropriate transfer functions at all of our dates.", function (done) {
-        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(assetDate).format(timelineDateFormat)]).toContain(jasmine.any(Function));
-        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(assetDate).format(timelineDateFormat)][0]()).toEqual(jasmine.any(Number));
-        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(assetDate).format(timelineDateFormat)][1]()).toEqual(jasmine.any(Number));
-        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(assetDate).format(timelineDateFormat)].length).toEqual(2);
-        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(transferDate1).format(timelineDateFormat)]).toContain(jasmine.any(Function));
-        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(transferDate1).format(timelineDateFormat)][0]()).toEqual(jasmine.any(Number));
-        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(transferDate1).format(timelineDateFormat)].length).toEqual(2);
-        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(transferDate2).format(timelineDateFormat)]).toContain(jasmine.any(Function));
-        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(transferDate2).format(timelineDateFormat)][0]()).toEqual(jasmine.any(Number));
-        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(transferDate2).format(timelineDateFormat)].length).toEqual(1);
+        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(assetDate).format(timelineDateFormat)].transfers).toContain(jasmine.any(Object));
+        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(assetDate).format(timelineDateFormat)].transfers[0].valueFunction()).toEqual(jasmine.any(Number));
+        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(assetDate).format(timelineDateFormat)].transfers[1].valueFunction()).toEqual(jasmine.any(Number));
+        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(assetDate).format(timelineDateFormat)].transfers.length).toEqual(2);
+        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(transferDate1).format(timelineDateFormat)].transfers).toContain(jasmine.any(Object));
+        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(transferDate1).format(timelineDateFormat)].transfers[0].valueFunction()).toEqual(jasmine.any(Number));
+        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(transferDate1).format(timelineDateFormat)].transfers.length).toEqual(2);
+        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(transferDate2).format(timelineDateFormat)].transfers).toContain(jasmine.any(Object));
+        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(transferDate2).format(timelineDateFormat)].transfers[0].valueFunction()).toEqual(jasmine.any(Number));
+        expect(PersonalFinanceEngine.__test__.timeline[moment.utc(transferDate2).format(timelineDateFormat)].transfers.length).toEqual(1);
         done();
       });
     });
