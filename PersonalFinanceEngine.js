@@ -18,6 +18,14 @@
     return err;
   };
 
+  var validFamilyStatuses = ["Single", "Married"];
+
+  // Change validCountries and validProvinces to be fetched from the countryList.json and provinceList.json files in taxes/
+  var validCountries = ["Canada"];
+
+  var validProvinces = ["Alberta", "British Columbia", "Manitoba", "New Brunswick", "Newfoundland and Labrador", "Nova Scotia",
+                        "Ontario", "Prince Edward Island", "Quebec", "Saskatchewan", "Northwest Territories", "Nunavut", "Yukon"];
+
   var validFrequencies = ["Annually", "Semiannually", "Quarterly", "Monthly", "Biweekly", "Weekly"];
   var momentIntervalLookup = {
     "Annually": {interval: "years", singularInterval: "year", multiplier: 1},
@@ -996,17 +1004,29 @@
     userHasSelectedEndDate: false,
     userSelectedEndDate: new moment(),
     dataTableRecordFrequency: "Annually",
+    inflation: 0,
   };
   var locale = {
     Country: "Canada",
     Province: "Alberta"
-  };            // A top level object to store more gobal details like inflation, taxes, etc. Stuff that isn't really a personalDetail.
-  var personalDetails = {};
+  };
+  // A top level object to store more gobal details like inflation, taxes, etc. Stuff that isn't really a personalDetail.
+  var personalDetails = {
+    familyStatus: "single",   // Relationship status
+    dependentList: [],        // A list of dependents (children, infirm relatives, etc.)
+    salary: 0,                // Direct income from an external source
+    spouseSalary: 0,          // Spousal direct salary, if one exists
+    spouseDisability: false,  // Whether
+    salaryGrowth: 0,          // Expected annual salary increases as a fraction (eh 5% = 0.05)
+    retirementDate: null,     // Planned retirement date. Null = no retirement planned
+    retirementIncome: 0.5,    // Percentage of working age salary to be drawn as retirement income
+    netWorthSeries: [],       // A table to store personal net worth for charting purposes.
+  };
   var chequingAccount = new ChequingAccount({
     ID: "1",
     name: "Test",
     startDate: modelParameters.timelineStartDate, //SHould it be this date or should it be the present date? Historical transfers woul require not preset.
-    initialValue: 0,  // Start balance of $1000
+    initialValue: 0,  // Start balance of $0
     accrualRate: 0 // With a negative accrual weight (depreciation) of 5% annually.
   });
   var assets = {};            // Object map of assets that can appreciate or depreciate like a car or house, etc.

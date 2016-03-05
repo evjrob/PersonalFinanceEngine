@@ -390,6 +390,14 @@ describe("Calculate functions", function() {
       expect(PersonalFinanceEngine.getTaxModel).not.toBeDefined();
     });
 
+    it("should load the correct taxModel based on the user's locale when we call getTaxModel", function() {
+      expect(true).toEqual(false);
+    });
+
+    it("should load and parse the correct json tax data based on the user's locale.", function() {
+      expect(true).toEqual(false);
+    });
+
     it("should have a private calculateTaxes method on the __test__ scope", function() {
       expect(PersonalFinanceEngine.__test__.calculateTaxes).toBeDefined();
       expect(PersonalFinanceEngine.calculateTaxes).not.toBeDefined();

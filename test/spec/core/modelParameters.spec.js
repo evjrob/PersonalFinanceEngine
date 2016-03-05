@@ -1,5 +1,5 @@
 "use strict";
-describe("Model parameters and other core functions", function() {
+describe("Model parameters and other core settings or functions", function() {
 
   describe("modelParameters properties", function() {
 
@@ -299,13 +299,43 @@ describe("Model parameters and other core functions", function() {
     });
   });
 
-  it("should have a locale object on the PersonalFinanceEngine scope.", function() {
-    expect(PersonalFinanceEngine.locale).toEqual(jasmine.any(Object));
-  });
+  describe("locale and associated functions.", function() {
 
-  it("should have a personalDetails object on the PersonalFinanceEngine scope.", function() {
-    expect(PersonalFinanceEngine.personalDetails).toEqual(jasmine.any(Object));
-  });
+    it("should have a locale object on the PersonalFinanceEngine scope.", function() {
+      expect(PersonalFinanceEngine.locale).toEqual(jasmine.any(Object));
+    });
+
+    it("should have a setLocale function on the PersonalFinanceEngine scope.", function() {
+      expect(PersonalFinanceEngine.setLocale).toEqual(jasmine.any(Function));
+    });
+
+    it("should allow us to change the local properties using setLocale with valid input.", function() {
+      expect(true).toEqual(false);
+    });
+
+    it("should reject with an InvalidInputError when setLocale is given bad input.", function() {
+      expect(true).toEqual(false);
+    });
+  })
+
+  describe("personalDetails and associated functions.", function() {
+
+    it("should have a personalDetails object on the PersonalFinanceEngine scope.", function() {
+      expect(PersonalFinanceEngine.personalDetails).toEqual(jasmine.any(Object));
+    });
+
+    it("should have a setPersonalDetails function on the PersonalFinanceEngine scope.", function() {
+      expect(PersonalFinanceEngine.setPersonalDetails).toEqual(jasmine.any(Function));
+    });
+
+    it("should allow us to change the personalDetails using setPersonalDetails with valid input.", function() {
+      expect(true).toEqual(false);
+    });
+
+    it("should reject with an InvalidInputError when setPersonalDetails is given bad input.", function() {
+      expect(true).toEqual(false);
+    });
+  })
 
   describe("generateUUID()", function() {
 
