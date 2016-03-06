@@ -20,11 +20,13 @@
 
   var validFamilyStatuses = ["Single", "Married"];
 
-  // Change validCountries and validProvinces to be fetched from the countryList.json and provinceList.json files in taxes/
+  // Change validCountries and validSubdivisions to be fetched from the countryList.json and provinceList.json files in taxes/
   var validCountries = ["Canada"];
 
-  var validProvinces = ["Alberta", "British Columbia", "Manitoba", "New Brunswick", "Newfoundland and Labrador", "Nova Scotia",
-                        "Ontario", "Prince Edward Island", "Quebec", "Saskatchewan", "Northwest Territories", "Nunavut", "Yukon"];
+  var validSubdivisions = [
+    "Alberta", "British Columbia", "Manitoba", "New Brunswick", "Newfoundland and Labrador", "Nova Scotia",
+    "Ontario", "Prince Edward Island", "Quebec", "Saskatchewan", "Northwest Territories", "Nunavut", "Yukon"
+  ];
 
   var validFrequencies = ["Annually", "Semiannually", "Quarterly", "Monthly", "Biweekly", "Weekly"];
   var momentIntervalLookup = {
@@ -710,6 +712,10 @@
     return promise;
   };
 
+  // A map of all the transfer definitions created by the user and by the initial value transfers for the
+  // different financial objects the user has created.
+  var transferDefinitions = {};
+
   // A constructor to create transfer objects for the timeline.
   function TransferDefinition(fromAccount, toAccount, valueFunction) {
     this.fromAccount = fromAccount;
@@ -995,6 +1001,18 @@
     return promise;
   };
 
+  // A transfer method to transfer funds from account1 to account2
+  // All changes to the value of an account should occur
+  // through a transfer. External accounts are treated as undefined.
+  function transfer(fromAccount, toAccount, transferAmount) {
+    if (fromAccount !== "external") {
+      fromAccount.value -= transferAmount;
+    }
+    if (toAccount !== "external")  {
+      toAccount.value += transferAmount;
+    }
+  }
+
   // Define the PersonalFinanceEngine Object for revealing
   var PersonalFinanceEngine = {};
 
@@ -1008,7 +1026,7 @@
   };
   var locale = {
     Country: "Canada",
-    Province: "Alberta"
+    Subdivison: "Alberta"
   };
   // A top level object to store more gobal details like inflation, taxes, etc. Stuff that isn't really a personalDetail.
   var personalDetails = {
@@ -1032,29 +1050,6 @@
   var assets = {};            // Object map of assets that can appreciate or depreciate like a car or house, etc.
   var investmentAccounts = {};// Object map for investment financial accounts like RRSP, TFSA, etc.
   var debtAccounts = {};      // Object map like mortgage (tied to the house asset), loans, etc.
-
-  // A transfer method to transfer funds from account1 to account2
-  // All changes to the value of an account should occur
-  // through a transfer. External accounts are treated as undefined.
-  function transfer(fromAccount, toAccount, transferAmount) {
-    if (fromAccount !== "external") {
-      fromAccount.value -= transferAmount;
-    }
-    if (toAccount !== "external")  {
-      toAccount.value += transferAmount;
-    }
-  }
-
-  // The timeline is and object based map of the following structure
-  //  var timeline = {
-  //    <date>: [
-  //      transfer(),
-  //      transfer(),
-  //      ...
-  //    ],
-  //    <date>: [ ... ],
-  //    ...
-  //}
 
   // Use a "transactional timeline" model for the financial accounts
   // for key dates in timeline, complete transfers, and record object
@@ -1182,9 +1177,7 @@
     }
   }
 
-  // A map of all the transfer definitions created by the user and by the initial value transfers for the
-  // different financial objects the user has created.
-  var transferDefinitions = {};
+  var taxModels = {};
 
   function getTaxModel() {
     // Using the user's locale information fetch the appropriate

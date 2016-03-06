@@ -1,0 +1,20 @@
+{
+  "Canada":{
+    "taxModel": "taxes/taxModels/canada.js",
+    "taxDataFile": "taxes/canada/taxData.json",
+    "federalSubdivisionsFile": "taxes/canada/provinceList.json",
+    "federalSubdivisionWord": "Province",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+      "TFSA",
+      "RRSP",
+      "Dividend",
+      "Eligible Dividend"
+    ],
+    "debtSubTyes": [
+
+    ]
+  }
+}

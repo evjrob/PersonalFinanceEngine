@@ -1,0 +1,33 @@
+{
+	"taxDeductions": [
+		{
+			"type":"basic personal amount",
+			"name": "basic personal amount",
+			"amount": 11138,
+			"requiresMarriage": false,
+			"requiresDependents": false,
+			"requiresRetirement": false
+		}
+	],
+	"taxBracket": [
+		{
+			"lower": 0,
+			"upper": 44701,
+			"rateOnExcess": 0.15
+		},
+		{
+			"lower": 44701,
+			"upper": 89401,
+			"rateOnExcess": 0.22
+		},
+		{
+			"lower": 89401,
+			"upper": 138586,
+			"rateOnExcess": 0.26
+		},
+		{
+			"lower": 138586,
+			"rateOnExcess": 0.29
+		}
+	]
+}

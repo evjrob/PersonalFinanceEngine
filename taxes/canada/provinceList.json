@@ -1,0 +1,158 @@
+{
+  "Alberta": {
+    "taxDataFile": "taxes/canada/alberta/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
+  "British Columbia": {
+    "taxDataFile": "taxes/canada/british_columbia/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
+  "Manitoba": {
+    "taxDataFile": "taxes/canada/manitoba/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
+  "New Brunswick": {
+    "taxDataFile": "taxes/canada/new_brunswick/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
+  "Newfoundland and Labrador": {
+    "taxDataFile": "taxes/canada/newfoundland/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
+  "Northwest Territories": {
+    "taxDataFile": "taxes/canada/northwest_territories/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
+  "Nova Scotia": {
+    "taxDataFile": "taxes/canada/nova_scotia/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
+  "Nunavut": {
+    "taxDataFile": "taxes/canada/nunavut/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
+  "Ontario": {
+    "taxDataFile": "taxes/canada/ontario/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
+  "Prince Edward Island": {
+    "taxDataFile": "taxes/canada/prince_edward_island/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
+  "Quebec": {
+    "taxDataFile": "taxes/canada/quebec/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
+  "Saskatchewan": {
+    "taxDataFile": "taxes/canada/saskatchewan/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
+  "Yukon": {
+    "taxDataFile": "taxes/canada/yukon/taxData.json",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  }
+}

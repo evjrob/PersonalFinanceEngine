@@ -1,0 +1,18 @@
+{
+  "taxDeductions": [
+			{
+				"type":"basic",
+				"name": "Basic Personal Amount",
+				"amount": 17787,
+				"requiresMarriage": false,
+				"requiresDependents": false,
+				"requiresRetirement": false
+			}
+		],
+		"taxTable": [
+			{
+				"lower": 0,
+				"rateOnExcess": 0.1
+			}
+		]
+}
