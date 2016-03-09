@@ -305,16 +305,98 @@ describe("Model parameters and other core settings or functions", function() {
       expect(PersonalFinanceEngine.locale).toEqual(jasmine.any(Object));
     });
 
-    it("should have a setLocale function on the PersonalFinanceEngine scope.", function() {
-      expect(PersonalFinanceEngine.setLocale).toEqual(jasmine.any(Function));
+    it("should have a setCountry function on the PersonalFinanceEngine scope.", function() {
+      expect(PersonalFinanceEngine.setCountry).toEqual(jasmine.any(Function));
     });
 
-    it("should allow us to change the local properties using setLocale with valid input.", function() {
-      expect(true).toEqual(false);
+    it("should have a setFederalSubdivision function on the PersonalFinanceEngine scope.", function() {
+      expect(PersonalFinanceEngine.setFederalSubdivision).toEqual(jasmine.any(Function));
     });
 
-    it("should reject with an InvalidInputError when setLocale is given bad input.", function() {
-      expect(true).toEqual(false);
+    it("should allow us to change the locale country using setCountry with valid input.", function(done) {
+      var newCountry = "Canada";
+
+      PersonalFinanceEngine.setCountry(newCountry)
+        .then( function() {
+          var federalSubdivisions = PersonalFinanceEngine.getValidFederalSubdivisions();
+
+          expect(PersonalFinanceEngine.locale.country).toEqual(newCountry);
+          expect(federalSubdivisions).toContain("Alberta");
+          expect(federalSubdivisions).toContain("British Columbia");
+          expect(federalSubdivisions).toContain("Manitoba");
+          expect(federalSubdivisions).toContain("New Brunswick");
+          expect(federalSubdivisions).toContain("Newfoundland and Labrador");
+          expect(federalSubdivisions).toContain("Northwest Territories");
+          expect(federalSubdivisions).toContain("Nova Scotia");
+          expect(federalSubdivisions).toContain("Nunavut");
+          expect(federalSubdivisions).toContain("Ontario");
+          expect(federalSubdivisions).toContain("Prince Edward Island");
+          expect(federalSubdivisions).toContain("Quebec");
+          expect(federalSubdivisions).toContain("Saskatchewan");
+          expect(federalSubdivisions).toContain("Yukon");
+
+          done();
+        })
+        .catch( function(err) {
+          if (err.name !== "InvalidInputError") {
+            throw err;
+          };
+          expect(err).toEqual(null);
+          done();
+        });
+    });
+
+    it("should reject with an InvalidInputError when setCountry is given bad input.", function(done) {
+      var newCountry = "Not a valid country";
+
+      PersonalFinanceEngine.setCountry(newCountry)
+        .then( function() {
+          expect(PersonalFinanceEngine.locale.country).not.toEqual(newCountry);
+          done();
+        })
+        .catch( function(err) {
+          if (err.name !== "InvalidInputError") {
+            throw err;
+          };
+          expect(err).not.toEqual(null);
+          expect(err.failedInputs.country).toEqual(true);
+          done();
+        });
+    });
+
+    it("should allow us to change the locale subdivision using setFederalSubdivision with valid input.", function(done) {
+      var newSubdivision = "Alberta";
+
+      PersonalFinanceEngine.setFederalSubdivision(newSubdivision)
+        .then( function() {
+          expect(PersonalFinanceEngine.locale.subdivision).toEqual(newSubdivision);
+          done();
+        })
+        .catch( function(err) {
+          if (err.name !== "InvalidInputError") {
+            throw err;
+          };
+          expect(err).toEqual(null);
+          done();
+        });
+    });
+
+    it("should reject with an InvalidInputError when setCountry is given bad input.", function(done) {
+      var newSubdivision = "Not a valid province";
+
+      PersonalFinanceEngine.setFederalSubdivision(newSubdivision)
+        .then( function() {
+          expect(PersonalFinanceEngine.locale.subdivision).not.toEqual(newSubdivision);
+          done();
+        })
+        .catch( function(err) {
+          if (err.name !== "InvalidInputError") {
+            throw err;
+          };
+          expect(err).not.toEqual(null);
+          expect(err.failedInputs.subdivision).toEqual(true);
+          done();
+        });
     });
   })
 

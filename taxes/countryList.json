@@ -1,6 +1,18 @@
-{
+{"None": {
+    "taxModel": "none",
+    "assetSubTypes": [
+
+    ],
+    "investmentSubTypes": [
+
+    ],
+    "debtSubTyes": [
+
+    ]
+  },
   "Canada":{
-    "taxModel": "taxes/taxModels/canada.js",
+    "taxModel": "canada",
+    "taxModelFile": "taxes/taxModels/canada.js",
     "taxDataFile": "taxes/canada/taxData.json",
     "federalSubdivisionsFile": "taxes/canada/provinceList.json",
     "federalSubdivisionWord": "Province",

@@ -10,6 +10,45 @@
 }(this, function(moment) {
   "use strict";
 
+  // xhr request function shamelessly borrowed from stackoverflow:
+  // https://stackoverflow.com/questions/30008114/how-do-i-promisify-native-xhr
+  function makeRequest (opts) {
+    return new Promise(function (resolve, reject) {
+      var xhr = new XMLHttpRequest();
+      xhr.open(opts.method, opts.url);
+      xhr.onload = function () {
+        if (this.status >= 200 && this.status < 300) {
+          resolve(xhr.response);
+        } else {
+          reject({
+            status: this.status,
+            statusText: xhr.statusText
+          });
+        }
+      };
+      xhr.onerror = function () {
+        reject({
+          status: this.status,
+          statusText: xhr.statusText
+        });
+      };
+      if (opts.headers) {
+        Object.keys(opts.headers).forEach(function (key) {
+          xhr.setRequestHeader(key, opts.headers[key]);
+        });
+      }
+      var params = opts.params;
+      // We'll need to stringify if we've been given an object
+      // If we have a string, this is skipped.
+      if (params && typeof params === 'object') {
+        params = Object.keys(params).map(function (key) {
+          return encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
+        }).join('&');
+      }
+      xhr.send(params);
+    });
+  }
+
   // Custom Error type for invalid input to the various create and edit functions
   function InvalidInputError(msg, failedInputs) {
     var err = Error.call(this, msg);
@@ -21,12 +60,29 @@
   var validFamilyStatuses = ["Single", "Married"];
 
   // Change validCountries and validSubdivisions to be fetched from the countryList.json and provinceList.json files in taxes/
-  var validCountries = ["Canada"];
+  // The "None" tax model (No taxes) is implemented by default.
+  var validCountries = ["None"];
 
-  var validSubdivisions = [
-    "Alberta", "British Columbia", "Manitoba", "New Brunswick", "Newfoundland and Labrador", "Nova Scotia",
-    "Ontario", "Prince Edward Island", "Quebec", "Saskatchewan", "Northwest Territories", "Nunavut", "Yukon"
-  ];
+  var countryListURL = "taxes/countryList.json";
+  var countryList = {};
+
+  // Populate the countryList using the JSON file
+  makeRequest({
+    method: 'GET',
+    url: countryListURL
+  })
+  .then( function(datums) {
+    countryList = JSON.parse(datums);
+    validCountries = Object.keys(countryList);
+  })
+  .catch(function (err) {
+    console.error("Error loading Countries for local purposes: "+err.statusText);
+  });
+
+  var validSubdivisions = ["None"];
+
+  var subdivisionListURL = "";
+  var subdivisionList = {};
 
   var validFrequencies = ["Annually", "Semiannually", "Quarterly", "Monthly", "Biweekly", "Weekly"];
   var momentIntervalLookup = {
@@ -36,6 +92,24 @@
     "Monthly": {interval: "months", singularInterval: "month", multiplier: 1},
     "Biweekly": {interval: "weeks", singularInterval: "week", multiplier: 2},
     "Weekly": {interval: "weeks", singularInterval: "week", multiplier: 1},
+  }
+
+  // Return a copy of the internal validCountries array.
+  function getValidCountries() {
+    var newArray = validCountries.slice();
+    return newArray;
+  }
+
+  // Return a copy of the internal validCountries array.
+  function getValidFederalSubdivisions() {
+    var newArray = validSubdivisions.slice();
+    return newArray;
+  }
+
+  // Return a copy of the internal validCountries array.
+  function getValidFrequencies() {
+    var newArray = validFrequencies.slice();
+    return newArray;
   }
 
   // A function to convert javascript date ojects in inputs to moment objects
@@ -1025,9 +1099,66 @@
     inflation: 0,
   };
   var locale = {
-    Country: "Canada",
-    Subdivison: "Alberta"
+    country: "None",
+    subdivision: "None"
   };
+
+  function setCountry(inputCountry) {
+
+    var promise = new Promise(
+      function (resolve, reject) {
+
+        if (validateCountry(inputCountry)) {
+
+          // TODO: It should probably check if the currently applied tax model is
+          // this country before potentially wasting resources fetching the json data
+
+          subdivisionListURL = countryList[inputCountry].federalSubdivisionsFile;
+
+          // Populate the validSubdivisions List using the JSON file
+          makeRequest({
+            method: 'GET',
+            url: subdivisionListURL
+          })
+          .then( function(datums) {
+            subdivisionList = JSON.parse(datums);
+            validSubdivisions = Object.keys(subdivisionList);
+            locale.country = inputCountry;
+            resolve();
+          })
+          .catch(function (err) {
+            console.error("Error could not load country json file: "+err.statusText);
+          });
+        } else {
+
+          var err = new InvalidInputError("Inputs failed validation", {country: true});
+          reject(err);
+        }
+      });
+
+    return promise;
+  }
+
+  function setFederalSubdivision(inputSubdivision) {
+
+    var promise = new Promise(
+      function (resolve, reject) {
+
+        if (validateFederalSubdivision(inputSubdivision)) {
+
+          locale.subdivision = inputSubdivision;
+          resolve();
+
+        } else {
+
+          var err = new InvalidInputError("Inputs failed validation", {subdivision: true});
+          reject(err);
+        }
+      });
+
+    return promise;
+  }
+
   // A top level object to store more gobal details like inflation, taxes, etc. Stuff that isn't really a personalDetail.
   var personalDetails = {
     familyStatus: "single",   // Relationship status
@@ -1177,17 +1308,43 @@
     }
   }
 
-  var taxModels = {};
+  var taxModels = {
+    none: {
+      calculateTaxTable: function() {
+        return 0;
+      },
+      getTaxRate: function(financialObject) {
+        return taxTable;
+      },
+      taxData: {},
+    },
+  };
 
   function getTaxModel() {
-    // Using the user's locale information fetch the appropriate
-    // tax model function and parameters from the json files to
-    // put into calculateTaxes();
+    // Using the user's locale information determine the appropriate
+    // tax model, and fetch the associated .json ans .js files if necessary
+    // then put them into the taxModels object.
+
+
   }
 
-  function calculateTaxes() {
-    // calculate the user's taxes based on their income, investment earnings, dividends, capital gains, etc.
+  function applyTaxModel(modelName) {
+    // Apply associated taxModel components to calculateTaxTable(), and getTaxRate();
   }
+
+  // A variable that stores a function for calculating taxation data tables for whatever
+  // jurisdiction the user has selected.
+  var calculateTaxTable = taxModels["none"].calculateTaxTable;
+
+  // An object tot store the json tax data:
+  var taxData = taxModels["none"].taxData;
+
+  // An object map to store the tax data for the different types of financial objects and income
+  // the user might possess or earn.
+  var taxTable = calculateTaxTable();
+
+  // A function that uses the current tax table to find the appropriate rate for the passed financial object
+  var getTaxRate = taxModels["none"].getTaxRate;
 
   // // //
   // Functions for operating on the account objects
@@ -1512,6 +1669,20 @@
     return false;
   }
 
+  function validateCountry(inputCountry) {
+    if (validCountries.indexOf(inputCountry) !== -1) {
+      return true;
+    }
+    return false;
+  }
+
+  function validateFederalSubdivision(inputSubdivision) {
+    if (validSubdivisions.indexOf(inputSubdivision) !== -1) {
+      return true;
+    }
+    return false;
+  }
+
   //----------------------------------------------------------------------------------------
   // Borrowed from http://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
   //----------------------------------------------------------------------------------------
@@ -1531,6 +1702,8 @@
   PersonalFinanceEngine.deleteUserSelectedEndDate = deleteUserSelectedEndDate;
   PersonalFinanceEngine.setDataTableRecordFrequency = setDataTableRecordFrequency;
   PersonalFinanceEngine.locale = locale;
+  PersonalFinanceEngine.setCountry = setCountry;
+  PersonalFinanceEngine.setFederalSubdivision = setFederalSubdivision;
   PersonalFinanceEngine.personalDetails = personalDetails;
   PersonalFinanceEngine.chequingAccount = chequingAccount;
   PersonalFinanceEngine.assets = assets;
@@ -1553,6 +1726,10 @@
   PersonalFinanceEngine.deleteTransfer = deleteTransfer;
   PersonalFinanceEngine.calculate = calculate;
 
+  PersonalFinanceEngine.getValidCountries = getValidCountries;
+  PersonalFinanceEngine.getValidFederalSubdivisions = getValidFederalSubdivisions;
+  PersonalFinanceEngine.getValidFrequencies = getValidFrequencies;
+
   //** PersonalFinanceEngine FOR TEST **/
   var __test__ = {};
   __test__.FinancialObject = FinancialObject;
@@ -1568,7 +1745,8 @@
   __test__.constructTimeline = constructTimeline.bind(PersonalFinanceEngine);
   __test__.transferDefinitions = transferDefinitions;
   __test__.getTaxModel = getTaxModel;
-  __test__.calculateTaxes = calculateTaxes;
+  __test__.applyTaxModel = applyTaxModel;
+  __test__.calculateTaxTable = calculateTaxTable;
   __test__.findMinDate = findMinDate;
   __test__.findMaxDate =findMaxDate;
   __test__.generateUUID = generateUUID;
