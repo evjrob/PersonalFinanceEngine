@@ -301,6 +301,20 @@ describe("Model parameters and other core settings or functions", function() {
 
   describe("locale and associated functions.", function() {
 
+    beforeAll( function(done) {
+      PersonalFinanceEngine.setCountry("None")
+        .then( function() {
+          done();
+        })
+    });
+
+    afterAll( function(done) {
+      PersonalFinanceEngine.setCountry("None")
+        .then( function() {
+          done();
+        })
+    });
+
     it("should have a locale object on the PersonalFinanceEngine scope.", function() {
       expect(PersonalFinanceEngine.locale).toEqual(jasmine.any(Object));
     });

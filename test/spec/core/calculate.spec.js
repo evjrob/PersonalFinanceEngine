@@ -390,12 +390,9 @@ describe("Calculate functions", function() {
       expect(PersonalFinanceEngine.getTaxModel).not.toBeDefined();
     });
 
-    it("should populate the validSubdivisions array properly when a country is selected.", function() {
-      expect(true).toEqual(false);
-    });
-
     it("should determine the correct taxModel based on the user's locale when we call getTaxModel", function() {
-      expect(true).toEqual(false);
+
+      expect(PersonalFinanceEngine.getTaxModel()).toEqual("canada");
     });
 
     it("should load the correct taxModel when we call applyTaxModel", function() {

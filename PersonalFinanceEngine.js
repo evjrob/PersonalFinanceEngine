@@ -82,7 +82,14 @@
   var validSubdivisions = ["None"];
 
   var subdivisionListURL = "";
-  var subdivisionList = {};
+  var subdivisionList = {
+    "None": {
+      "taxModel": "none",
+      "assetSubTypes": [],
+      "investmentSubTypes": [],
+      "debtSubTyes": []
+    },
+  };
 
   var validFrequencies = ["Annually", "Semiannually", "Quarterly", "Monthly", "Biweekly", "Weekly"];
   var momentIntervalLookup = {
@@ -1110,25 +1117,30 @@
 
         if (validateCountry(inputCountry)) {
 
-          // TODO: It should probably check if the currently applied tax model is
-          // this country before potentially wasting resources fetching the json data
+          // If this country hasn't been selected yet, we still need to load its subdivisions
+          // from the json file.
+          if (!subdivisionList[inputCountry]) {
+            subdivisionListURL = countryList[inputCountry].federalSubdivisionsFile;
 
-          subdivisionListURL = countryList[inputCountry].federalSubdivisionsFile;
-
-          // Populate the validSubdivisions List using the JSON file
-          makeRequest({
-            method: 'GET',
-            url: subdivisionListURL
-          })
-          .then( function(datums) {
-            subdivisionList = JSON.parse(datums);
-            validSubdivisions = Object.keys(subdivisionList);
+            // Populate the validSubdivisions List using the JSON file
+            makeRequest({
+              method: 'GET',
+              url: subdivisionListURL
+            })
+            .then( function(datums) {
+              subdivisionList[inputCountry] = JSON.parse(datums);
+              validSubdivisions = Object.keys(subdivisionList[inputCountry]);
+              locale.country = inputCountry;
+              resolve();
+            })
+            .catch(function (err) {
+              console.error("Error could not load country json file: "+err.statusText);
+            });
+          } else {
+            validSubdivisions = Object.keys(subdivisionList[inputCountry]);
             locale.country = inputCountry;
             resolve();
-          })
-          .catch(function (err) {
-            console.error("Error could not load country json file: "+err.statusText);
-          });
+          };
         } else {
 
           var err = new InvalidInputError("Inputs failed validation", {country: true});
