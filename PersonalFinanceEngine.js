@@ -63,28 +63,57 @@
   // The "None" tax model (No taxes) is implemented by default.
   var validCountries = ["None"];
 
-  var countryListURL = "taxes/countryList.json";
-  var countryList = {};
+  var countryDetailsPath = "taxes/countryList.json";
+  var countryDetails = {None: {
+      "hasBeenLoaded": true,
+      "taxModel": "none",
+      "taxData": {},
+      "assetSubTypes": [],
+      "investmentSubTypes": [],
+      "debtSubTyes": []
+    },
+    Canada:{
+      "taxModel": "canada",
+      "hasBeenLoaded": false,
+      "taxModelFile": "taxes/taxModels/canada.js",
+      "taxDataFile": "taxes/canada/taxData.json",
+      "federalSubdivisionsFile": "taxes/canada/provinceList.json",
+      "federalSubdivisionWord": "Province",
+      "assetSubTypes": [],
+      "investmentSubTypes": [
+        "TFSA",
+        "RRSP"
+      ],
+      "debtSubTyes": []
+    }
+  };
 
-  // Populate the countryList using the JSON file
-  makeRequest({
-    method: 'GET',
-    url: countryListURL
-  })
-  .then( function(datums) {
-    countryList = JSON.parse(datums);
-    validCountries = Object.keys(countryList);
-  })
-  .catch(function (err) {
-    console.error("Error loading Countries for local purposes: "+err.statusText);
-  });
+  validCountries = Object.keys(countryDetails);
+
+  // Need to make it so that this doesn't overwrite the existing hard coded countryDetails,
+  // or make it so the hardcoded list isn't necessary:
+
+  // Populate the countryDetails using the JSON file
+  //makeRequest({
+  //  method: 'GET',
+  //  url: countryDetailsPath
+  //})
+  //.then( function(datums) {
+  //  countryDetails = JSON.parse(datums);
+  //  validCountries = Object.keys(countryDetails);
+  //})
+  //.catch(function (err) {
+  //  console.error("Error loading Countries for local purposes: "+err.statusText);
+  //});
 
   var validSubdivisions = ["None"];
 
-  var subdivisionListURL = "";
-  var subdivisionList = {
+  var subdivisionDetailsPath = "";
+  var subdivisionDetails = {
     "None": {
+      "hasBeenLoaded": true,
       "taxModel": "none",
+      "taxData": {},
       "assetSubTypes": [],
       "investmentSubTypes": [],
       "debtSubTyes": []
@@ -1112,63 +1141,141 @@
 
   function setCountry(inputCountry) {
 
-    var promise = new Promise(
-      function (resolve, reject) {
+    var thiscountryDetailsEntry = countryDetails[inputCountry];
 
-        if (validateCountry(inputCountry)) {
+    return new Promise( function (resolve, reject) {
 
-          // If this country hasn't been selected yet, we still need to load its subdivisions
-          // from the json file.
-          if (!subdivisionList[inputCountry]) {
-            subdivisionListURL = countryList[inputCountry].federalSubdivisionsFile;
+      if (validateCountry(inputCountry)) {
 
-            // Populate the validSubdivisions List using the JSON file
-            makeRequest({
+        // If this country hasn't been selected yet, we still need to load its subdivisions
+        // from the json file.
+        // I dislike this nested promise approach: it works for now, but needs review.
+        if (!thiscountryDetailsEntry.hasBeenLoaded) {
+          subdivisionDetailsPath = thiscountryDetailsEntry.federalSubdivisionsFile;
+          var taxModelPath = thiscountryDetailsEntry.taxModelFile;
+          var taxDataPath = thiscountryDetailsEntry.taxDataFile;
+
+          var dataRequests = [];
+
+          // Populate the validSubdivisions List using the JSON file
+          var subdivRequest = makeRequest({
+            method: 'GET',
+            url: subdivisionDetailsPath
+          })
+          dataRequests.push(subdivRequest);
+          var taxDataRequest = makeRequest({
+            method: 'GET',
+            url: taxDataPath
+          })
+          dataRequests.push(taxDataRequest);
+          // If we don't already have it, populate the taxModel using the JS file
+          if (!taxModels[thiscountryDetailsEntry.taxModel]) {
+            var taxModelRequest = makeRequest({
               method: 'GET',
-              url: subdivisionListURL
+              url: taxModelPath
             })
-            .then( function(datums) {
-              subdivisionList[inputCountry] = JSON.parse(datums);
-              validSubdivisions = Object.keys(subdivisionList[inputCountry]);
-              locale.country = inputCountry;
-              resolve();
-            })
-            .catch(function (err) {
-              console.error("Error could not load country json file: "+err.statusText);
-            });
-          } else {
-            validSubdivisions = Object.keys(subdivisionList[inputCountry]);
-            locale.country = inputCountry;
+            dataRequests.push(taxModelRequest);
+          }
+
+          // Resolve when the above requests all finish
+          Promise.all([subdivRequest, taxDataRequest, taxModelRequest])
+          .then( function(datums) {
+            thiscountryDetailsEntry.hasBeenLoaded = true;
+
+            // Populate the subdivisionDetails and validSubdivisions array.
+            subdivisionDetails[inputCountry] = JSON.parse(datums[0]);
+
+            // Populate the country taxData.
+            thiscountryDetailsEntry.taxData = JSON.parse(datums[1]);
+
+            // Run the taxModel, which should be javascript code that modifies our
+            // finance engine ass necessary.
+            if (datums.length > 2) {
+              eval(datums[2]);
+            }
+
             resolve();
-          };
+          })
+          .catch(function (err) {
+            console.error("Error could not load country json file: "+err.statusText);
+            reject(err);
+          })
         } else {
-
-          var err = new InvalidInputError("Inputs failed validation", {country: true});
-          reject(err);
+          resolve();
         }
-      });
+      } else {
 
-    return promise;
+        var err = new InvalidInputError("Inputs failed validation", {country: true});
+        reject(err);
+      }
+    })
+    .then( function() {
+      validSubdivisions = Object.keys(subdivisionDetails[inputCountry]);
+      locale.country = inputCountry;
+    })
   }
 
   function setFederalSubdivision(inputSubdivision) {
 
-    var promise = new Promise(
-      function (resolve, reject) {
+    var subdivisionDetailsEntry = subdivisionDetails[locale.country][inputSubdivision];
 
-        if (validateFederalSubdivision(inputSubdivision)) {
+    return new Promise( function (resolve, reject) {
 
-          locale.subdivision = inputSubdivision;
-          resolve();
+      if (validateFederalSubdivision(inputSubdivision)) {
 
+        if (!subdivisionDetailsEntry.hasBeenLoaded) {
+          var taxModelPath = subdivisionDetailsEntry.taxModelFile;
+          var taxDataPath = subdivisionDetailsEntry.taxDataFile;
+
+          var dataRequests = [];
+
+          // We've never loaded this subdivision, so we definitely need the taxData.
+          var taxDataRequest = makeRequest({
+            method: 'GET',
+            url: taxDataPath
+          })
+          dataRequests.push(taxDataRequest);
+
+          // If we don't already have it, populate the taxModel using the JS file
+          if (!taxModels[subdivisionDetailsEntry.taxModel]) {
+            var taxModelRequest = makeRequest({
+              method: 'GET',
+              url: taxModelPath
+            })
+
+            dataRequests.push(taxModelRequest);
+          }
+
+          // Resolve when the above requests all finish
+          Promise.all(dataRequests)
+          .then( function(datums) {
+            subdivisionDetailsEntry.hasBeenLoaded = true;
+
+            // Populate the subdivision taxData.
+            subdivisionDetailsEntry.taxData = JSON.parse(datums[0]);
+
+            // If the taxModel was alsonew, then evaluate t to have it configured.
+            if (datums.length > 1) {
+              eval(datums[1]);
+            }
+
+            resolve();
+          })
+          .catch(function (err) {
+            console.error("Error could not load federal subdivision json file: "+err.statusText);
+            reject(err);
+          })
         } else {
-
-          var err = new InvalidInputError("Inputs failed validation", {subdivision: true});
-          reject(err);
+          resolve();
         }
-      });
-
-    return promise;
+      } else {
+        var err = new InvalidInputError("Inputs failed validation", {subdivision: true});
+        reject(err);
+      }
+    })
+    .then( function() {
+      locale.subdivision = inputSubdivision;
+    })
   }
 
   // A top level object to store more gobal details like inflation, taxes, etc. Stuff that isn't really a personalDetail.
@@ -1327,8 +1434,7 @@
       },
       getTaxRate: function(financialObject) {
         return taxTable;
-      },
-      taxData: {},
+      }
     },
   };
 
@@ -1348,8 +1454,7 @@
   // jurisdiction the user has selected.
   var calculateTaxTable = taxModels["none"].calculateTaxTable;
 
-  // An object tot store the json tax data:
-  var taxData = taxModels["none"].taxData;
+  var taxData;
 
   // An object map to store the tax data for the different types of financial objects and income
   // the user might possess or earn.
@@ -1744,6 +1849,8 @@
 
   //** PersonalFinanceEngine FOR TEST **/
   var __test__ = {};
+  __test__.countryDetails = countryDetails;
+  __test__.subdivisionDetails = subdivisionDetails;
   __test__.FinancialObject = FinancialObject;
   __test__.Asset = Asset;
   __test__.FinancialAccount = FinancialAccount;
@@ -1756,6 +1863,7 @@
   __test__.RecurringTransferDefinition = RecurringTransferDefinition;
   __test__.constructTimeline = constructTimeline.bind(PersonalFinanceEngine);
   __test__.transferDefinitions = transferDefinitions;
+  __test__.taxModels = taxModels;
   __test__.getTaxModel = getTaxModel;
   __test__.applyTaxModel = applyTaxModel;
   __test__.calculateTaxTable = calculateTaxTable;

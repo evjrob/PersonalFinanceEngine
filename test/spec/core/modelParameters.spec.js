@@ -333,7 +333,6 @@ describe("Model parameters and other core settings or functions", function() {
       PersonalFinanceEngine.setCountry(newCountry)
         .then( function() {
           var federalSubdivisions = PersonalFinanceEngine.getValidFederalSubdivisions();
-
           expect(PersonalFinanceEngine.locale.country).toEqual(newCountry);
           expect(federalSubdivisions).toContain("Alberta");
           expect(federalSubdivisions).toContain("British Columbia");
@@ -349,6 +348,10 @@ describe("Model parameters and other core settings or functions", function() {
           expect(federalSubdivisions).toContain("Saskatchewan");
           expect(federalSubdivisions).toContain("Yukon");
 
+          expect(PersonalFinanceEngine.__test__.countryDetails["Canada"].taxData).toBeDefined();
+
+          expect(PersonalFinanceEngine.__test__.taxModels["canada"]).toBeDefined();
+
           done();
         })
         .catch( function(err) {
@@ -356,6 +359,7 @@ describe("Model parameters and other core settings or functions", function() {
             throw err;
           };
           expect(err).toEqual(null);
+          console.log(err.failedInputs)
           done();
         });
     });
@@ -379,11 +383,17 @@ describe("Model parameters and other core settings or functions", function() {
     });
 
     it("should allow us to change the locale subdivision using setFederalSubdivision with valid input.", function(done) {
+      var newCountry = "Canada"
       var newSubdivision = "Alberta";
-
-      PersonalFinanceEngine.setFederalSubdivision(newSubdivision)
+      PersonalFinanceEngine.setCountry(newCountry)
+        .then( function() {
+          return PersonalFinanceEngine.setFederalSubdivision(newSubdivision);
+        })
         .then( function() {
           expect(PersonalFinanceEngine.locale.subdivision).toEqual(newSubdivision);
+
+          expect(PersonalFinanceEngine.__test__.subdivisionDetails["Canada"]["Alberta"].taxData).toBeDefined();
+
           done();
         })
         .catch( function(err) {
@@ -391,11 +401,12 @@ describe("Model parameters and other core settings or functions", function() {
             throw err;
           };
           expect(err).toEqual(null);
+          console.log(err.failedInputs);
           done();
         });
     });
 
-    it("should reject with an InvalidInputError when setCountry is given bad input.", function(done) {
+    it("should reject with an InvalidInputError when setFederalSubdivision is given bad input.", function(done) {
       var newSubdivision = "Not a valid province";
 
       PersonalFinanceEngine.setFederalSubdivision(newSubdivision)

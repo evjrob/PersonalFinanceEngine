@@ -391,7 +391,6 @@ describe("Calculate functions", function() {
     });
 
     it("should determine the correct taxModel based on the user's locale when we call getTaxModel", function() {
-
       expect(PersonalFinanceEngine.getTaxModel()).toEqual("canada");
     });
 
