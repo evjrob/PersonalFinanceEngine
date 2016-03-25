@@ -10,6 +10,192 @@
 }(this, function(moment) {
   "use strict";
 
+  // Define the PersonalFinanceEngine Object for revealing only the things we want to
+  var PersonalFinanceEngine = {};
+
+  // An assortment of parameters that play an important role throughout the model.
+  var modelParameters = {
+    timelineStartDate: new moment(),
+    timelineEndDate: new moment(),
+    userHasSelectedEndDate: false,
+    userSelectedEndDate: new moment(),
+    dataTableRecordFrequency: "Annually",
+    inflation: 0,
+  };
+
+  // Parameters specifically related to the user's governmental location for
+  // purpose of determining taxation.
+  var locale = {
+    country: "None",
+    subdivision: "None"
+  };
+
+  // An object to store user information independednt of their location or the model parameters.
+  var personalDetails = {
+    familyStatus: "single",   // Relationship status
+    dependentList: [],        // A list of dependents (children, infirm relatives, etc.)
+    salary: 0,                // Direct income from an external source
+    spouseSalary: 0,          // Spousal direct salary, if one exists
+    spouseDisability: false,  // Whether
+    salaryGrowth: 0,          // Expected annual salary increases as a fraction (eh 5% = 0.05)
+    retirementDate: null,     // Planned retirement date. Null = no retirement planned
+    retirementIncome: 0.5,    // Percentage of working age salary to be drawn as retirement income
+    netWorthSeries: [],       // A table to store personal net worth for charting purposes.
+  };
+
+  // The user's primary account. Largely serves as a place for salary or other income to be deposited
+  // and as a source for asset purchases, contributions to investments, or payments to debts.
+  var chequingAccount = new ChequingAccount({
+    ID: "1",
+    name: "Test",
+    startDate: modelParameters.timelineStartDate, //SHould it be this date or should it be the present date? Historical transfers woul require not preset.
+    initialValue: 0,  // Start balance of $0
+    accrualRate: 0 // With a negative accrual weight (depreciation) of 5% annually.
+  });
+
+  var assets = {};            // Object map of assets that can appreciate or depreciate like a car or house, etc.
+  var investmentAccounts = {};// Object map for investment financial accounts like RRSP, TFSA, etc.
+  var debtAccounts = {};      // Object map like mortgage (tied to the house asset), loans, etc.
+
+  // A map of all the transfer definitions created by the user and by the initial value transfers for the
+  // different financial objects the user has created.
+  var transferDefinitions = {};
+
+  // Use a "transactional timeline" model for the financial accounts
+  // for key dates in timeline, complete transfers, and record object
+  // balances and other figures in correct tables if it's a scheduled task.
+  var timeline = {}; // The internal timeline built by constructTimeline() and used by calculate()
+  var timelineDates = [];
+  var timelineDateFormat = "YYYY-MM-DD";
+
+  // A map of the currently loaded tax models based on the locales the user has selected.
+  var taxModels = {
+    None: {
+      calculateTaxTable: function() {
+        return 0;
+      },
+      getTaxRate: function(financialObject) {
+        return taxTable;
+      },
+      assetConstructor: Asset,
+      investmentConstructor: InvestmentAccount,
+      debtConstructor: DebtAccount,
+    },
+  };
+
+  // A variable that stores a function for calculating taxation data tables for whatever
+  // locale the user has selected.
+  var calculateTaxTable = taxModels["None"].calculateTaxTable;
+
+  // A place to store the taxData for the currently selected locale.
+  var taxData;
+
+  // An object map to store the tax data for the different types of financial objects and income
+  // the user might possess or earn.
+  var taxTable = calculateTaxTable();
+
+  // A function that uses the current tax table to find the appropriate rate for the passed financial object
+  var getTaxRate = taxModels["None"].getTaxRate;
+
+  // Variables to store references to the current locales constructors for easy access without
+  // constantly retrieving it from the taxModel map.
+  var AssetConstructor = taxModels["None"].assetConstructor;
+  var InvestmentConstructor = taxModels["None"].investmentConstructor;
+  var DebtConstructor = taxModels["None"].debtConstructor;
+
+  // A list of valid relationship statuses that the user can select.
+  var validFamilyStatuses = ["Single", "Married"];
+
+  // A list of valid time frequencies the user can select from.
+  var validFrequencies = ["Annually", "Semiannually", "Quarterly", "Monthly", "Biweekly", "Weekly"];
+
+  // A map of model frequencies to the corresponding nominal interval and number fof them required
+  // in the moment.js library. This is required to have frequencies like "Semiannually" which are
+  // not included nominally in moment.js.
+  var momentIntervalLookup = {
+    "Annually": {interval: "years", singularInterval: "year", multiplier: 1},
+    "Semiannually": {interval: "quarters", singularInterval: "quarter", multiplier: 2},
+    "Quarterly": {interval: "quarters", singularInterval: "quarter", multiplier: 1},
+    "Monthly": {interval: "months", singularInterval: "month", multiplier: 1},
+    "Biweekly": {interval: "weeks", singularInterval: "week", multiplier: 2},
+    "Weekly": {interval: "weeks", singularInterval: "week", multiplier: 1},
+  }
+
+
+  // A collecton of arrays and objects for storing and mapping the available
+  // country level locale information.
+  var validCountries = ["None"];
+  var countryDetailsPath = "taxes/countryList.json";
+  var countryDetails = {
+    None: {
+      "hasBeenLoaded": true,
+      "taxModel": "None",
+      "taxData": {}
+    },
+    Canada:{
+      "taxModel": "Canada",
+      "hasBeenLoaded": false,
+      "taxModelFile": "taxes/taxModels/canada.js",
+      "taxDataFile": "taxes/canada/taxData.json",
+      "federalSubdivisionsFile": "taxes/canada/provinceList.json",
+      "federalSubdivisionWord": "Province"
+    }
+  };
+
+  validCountries = Object.keys(countryDetails);
+
+  // Need to make it so that this doesn't overwrite the existing hard coded countryDetails,
+  // or make it so the hardcoded list isn't necessary:
+
+  // Populate the countryDetails using the JSON file
+  //makeRequest({
+  //  method: 'GET',
+  //  url: countryDetailsPath
+  //})
+  //.then( function(datums) {
+  //  countryDetails = JSON.parse(datums);
+  //  validCountries = Object.keys(countryDetails);
+  //})
+  //.catch(function (err) {
+  //  console.error("Error loading Countries for local purposes: "+err.statusText);
+  //});
+
+
+  // A collecton of arrays and objects for storing and mapping the available
+  // federal subdivision (province, state, etc) level locale information.
+  var validSubdivisions = ["None"];
+  var subdivisionDetailsPath = "";
+  var subdivisionDetails = {
+    "None": {
+      "None": {
+        "hasBeenLoaded": true,
+        "taxModel": "None",
+        "taxData": {}
+      }
+    },
+  };
+
+  // Custom Error type for invalid input to the various create and edit functions
+  function InvalidInputError(msg, failedInputs) {
+    var err = Error.call(this, msg);
+    err.name = "InvalidInputError";
+    err.failedInputs = failedInputs;
+    return err;
+  };
+
+  //----------------------------------------------------------------------------------------
+  // Borrowed from http://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
+  //----------------------------------------------------------------------------------------
+  function generateUUID() {
+      var d = new Date().getTime();
+      var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          var r = (d + Math.random()*16)%16 | 0;
+          d = Math.floor(d/16);
+          return (c=='x' ? r : (r&0x3|0x8)).toString(16);
+      });
+      return uuid;
+  }
+
   // xhr request function shamelessly borrowed from stackoverflow:
   // https://stackoverflow.com/questions/30008114/how-do-i-promisify-native-xhr
   function makeRequest (opts) {
@@ -47,95 +233,6 @@
       }
       xhr.send(params);
     });
-  }
-
-  // Custom Error type for invalid input to the various create and edit functions
-  function InvalidInputError(msg, failedInputs) {
-    var err = Error.call(this, msg);
-    err.name = "InvalidInputError";
-    err.failedInputs = failedInputs;
-    return err;
-  };
-
-  var validFamilyStatuses = ["Single", "Married"];
-
-  // Change validCountries and validSubdivisions to be fetched from the countryList.json and provinceList.json files in taxes/
-  // The "None" tax model (No taxes) is implemented by default.
-  var validCountries = ["None"];
-
-  var countryDetailsPath = "taxes/countryList.json";
-  var countryDetails = {None: {
-      "hasBeenLoaded": true,
-      "taxModel": "None",
-      "taxData": {}
-    },
-    Canada:{
-      "taxModel": "Canada",
-      "hasBeenLoaded": false,
-      "taxModelFile": "taxes/taxModels/canada.js",
-      "taxDataFile": "taxes/canada/taxData.json",
-      "federalSubdivisionsFile": "taxes/canada/provinceList.json",
-      "federalSubdivisionWord": "Province"
-    }
-  };
-
-  validCountries = Object.keys(countryDetails);
-
-  // Need to make it so that this doesn't overwrite the existing hard coded countryDetails,
-  // or make it so the hardcoded list isn't necessary:
-
-  // Populate the countryDetails using the JSON file
-  //makeRequest({
-  //  method: 'GET',
-  //  url: countryDetailsPath
-  //})
-  //.then( function(datums) {
-  //  countryDetails = JSON.parse(datums);
-  //  validCountries = Object.keys(countryDetails);
-  //})
-  //.catch(function (err) {
-  //  console.error("Error loading Countries for local purposes: "+err.statusText);
-  //});
-
-  var validSubdivisions = ["None"];
-
-  var subdivisionDetailsPath = "";
-  var subdivisionDetails = {
-    "None": {
-      "None": {
-        "hasBeenLoaded": true,
-        "taxModel": "None",
-        "taxData": {}
-      }
-    },
-  };
-
-  var validFrequencies = ["Annually", "Semiannually", "Quarterly", "Monthly", "Biweekly", "Weekly"];
-  var momentIntervalLookup = {
-    "Annually": {interval: "years", singularInterval: "year", multiplier: 1},
-    "Semiannually": {interval: "quarters", singularInterval: "quarter", multiplier: 2},
-    "Quarterly": {interval: "quarters", singularInterval: "quarter", multiplier: 1},
-    "Monthly": {interval: "months", singularInterval: "month", multiplier: 1},
-    "Biweekly": {interval: "weeks", singularInterval: "week", multiplier: 2},
-    "Weekly": {interval: "weeks", singularInterval: "week", multiplier: 1},
-  }
-
-  // Return a copy of the internal validCountries array.
-  function getValidCountries() {
-    var newArray = validCountries.slice();
-    return newArray;
-  }
-
-  // Return a copy of the internal validCountries array.
-  function getValidFederalSubdivisions() {
-    var newArray = validSubdivisions.slice();
-    return newArray;
-  }
-
-  // Return a copy of the internal validCountries array.
-  function getValidFrequencies() {
-    var newArray = validFrequencies.slice();
-    return newArray;
   }
 
   // A function to convert javascript date ojects in inputs to moment objects
@@ -216,6 +313,38 @@
     return maxDate;
   }
 
+
+  // // //
+  // getValid...() functions.
+  //
+  // An assortment of functions that determine and return dynamic lists of valid
+  // values for user inputs.
+  // // //
+
+  // Return a copy of the internal validCountries array.
+  function getValidCountries() {
+    var newArray = validCountries.slice();
+    return newArray;
+  }
+
+  // Return a copy of the internal validCountries array.
+  function getValidFederalSubdivisions() {
+    var newArray = validSubdivisions.slice();
+    return newArray;
+  }
+
+  // Return a copy of the internal validCountries array.
+  function getValidFrequencies() {
+    var newArray = validFrequencies.slice();
+    return newArray;
+  }
+
+
+  // // //
+  //  Functions that are for setting and managing some of the main model components
+  //  such as the range of dates the model calculates over, or the locale.
+  // // //
+
   function setUserSelectedEndDate(inputDate) {
 
     var inputWrapper = {date: inputDate};
@@ -267,7 +396,144 @@
     });
   }
 
-  // Constructors for the parent Financial Object type and it's children types.
+  function setCountry(inputCountry) {
+
+    var thiscountryDetailsEntry = countryDetails[inputCountry];
+
+    return new Promise( function (resolve, reject) {
+
+      if (!validateCountry(inputCountry)) {
+        var err = new InvalidInputError("Inputs failed validation", {country: true});
+        reject(err);
+      }
+
+      // If this country hasn't been selected yet, we still need to load its subdivisions
+      // from the json file.
+      // I dislike this nested promise approach: it works for now, but needs review.
+      if (!thiscountryDetailsEntry.hasBeenLoaded) {
+        subdivisionDetailsPath = thiscountryDetailsEntry.federalSubdivisionsFile;
+        var taxModelPath = thiscountryDetailsEntry.taxModelFile;
+        var taxDataPath = thiscountryDetailsEntry.taxDataFile;
+
+        var dataRequests = [];
+
+        // Populate the validSubdivisions List using the JSON file
+        var subdivRequest = makeRequest({
+          method: 'GET',
+          url: subdivisionDetailsPath
+        })
+        dataRequests.push(subdivRequest);
+        var taxDataRequest = makeRequest({
+          method: 'GET',
+          url: taxDataPath
+        })
+        dataRequests.push(taxDataRequest);
+
+        // Resolve when the above requests all finish
+        Promise.all([subdivRequest, taxDataRequest])
+        .then( function(datums) {
+          thiscountryDetailsEntry.hasBeenLoaded = true;
+
+          // Populate the subdivisionDetails and validSubdivisions array.
+          subdivisionDetails[inputCountry] = JSON.parse(datums[0]);
+          validSubdivisions = Object.keys(subdivisionDetails[inputCountry]);
+
+          // Populate the country taxData.
+          thiscountryDetailsEntry.taxData = JSON.parse(datums[1]);
+
+          locale.country = inputCountry;
+
+          // If the current subdivision isn't valid anymore then we need to
+          // default to the first one in the validSubdivisions.
+          if (!validateFederalSubdivision(locale.subdivision)) {
+            setFederalSubdivision(validSubdivisions[0])
+            resolve(setFederalSubdivision(validSubdivisions[0]));
+          } else {
+            resolve();
+          }
+        })
+        .catch(function (err) {
+          console.error("Error could not load country json file: "+err.statusText);
+          reject(err);
+        })
+      } else {
+        validSubdivisions = Object.keys(subdivisionDetails[inputCountry]);
+        locale.country = inputCountry;
+        resolve();
+      }
+    })
+  }
+
+  function setFederalSubdivision(inputSubdivision) {
+
+    var subdivisionDetailsEntry = subdivisionDetails[locale.country][inputSubdivision];
+
+    return new Promise( function (resolve, reject) {
+
+      if (validateFederalSubdivision(inputSubdivision)) {
+
+        if (!subdivisionDetailsEntry.hasBeenLoaded) {
+          var taxModelPath = subdivisionDetailsEntry.taxModelFile;
+          var taxDataPath = subdivisionDetailsEntry.taxDataFile;
+
+          var dataRequests = [];
+
+          // We've never loaded this subdivision, so we definitely need the taxData.
+          var taxDataRequest = makeRequest({
+            method: 'GET',
+            url: taxDataPath
+          })
+          dataRequests.push(taxDataRequest);
+
+          // If we don't already have it, populate the taxModel using the JS file
+          if (!taxModels[subdivisionDetailsEntry.taxModel]) {
+            var taxModelRequest = makeRequest({
+              method: 'GET',
+              url: taxModelPath
+            })
+
+            dataRequests.push(taxModelRequest);
+          }
+
+          // Resolve when the above requests all finish
+          Promise.all(dataRequests)
+          .then( function(datums) {
+            subdivisionDetailsEntry.hasBeenLoaded = true;
+
+            // Populate the subdivision taxData.
+            subdivisionDetailsEntry.taxData = JSON.parse(datums[0]);
+
+            // If the taxModel was also new, then evaluate t to have it configured.
+            if (datums.length > 1) {
+              eval(datums[1]);
+            }
+
+            resolve();
+          })
+          .catch(function (err) {
+            console.error("Error could not load federal subdivision json file: "+err.statusText);
+            reject(err);
+          })
+        } else {
+          resolve();
+        }
+      } else {
+        var err = new InvalidInputError("Inputs failed validation", {subdivision: true});
+        reject(err);
+      }
+    })
+    .then( function() {
+      locale.subdivision = inputSubdivision;
+    })
+  }
+
+
+  // // //
+  //  Constructors and functions for creating and managing the financial objects
+  //  that define a user's accounts, debts, and assets.
+  // // //
+
+  // Constructors for the parent Financial Object type and it's child types.
   // An init object passed to it to provide the values for initialization
   // These functions are private as a helper function for each is ecxpected to
   // sanitize user inputs first.
@@ -782,9 +1048,12 @@
     });
   };
 
-  // A map of all the transfer definitions created by the user and by the initial value transfers for the
-  // different financial objects the user has created.
-  var transferDefinitions = {};
+
+  // // //
+  //  Constructors and functions for creating and managing the transfer definitions
+  //  that define the movement of money between the user's financial accounts and
+  //  assets, and to and from an external sources.
+  // // //
 
   // A constructor to create transfer objects for the timeline.
   function TransferDefinition(fromAccount, toAccount, valueFunction) {
@@ -811,10 +1080,7 @@
     this.frequency = frequency; //Eg. "Daily" (hopeffully not), "Weekly", "Biweekly", "Monthly", "Annually"
   };
 
-  // // //
-  // Functions for operating on transactions
-  // // //
-  // Methods to set and change user defined transfers
+  // Methods to set and change user defined transfers.
   function createOneTimeTransfer(newTransfer) {
 
     //convert the user provided native Date objects to moment objects
@@ -1059,7 +1325,8 @@
 
   // A transfer method to transfer funds from account1 to account2
   // All changes to the value of an account should occur
-  // through a transfer. External accounts are treated as undefined.
+  // through a transfer. External accounts are denoted as "external"
+  // in place of the usua UUID.
   function transfer(fromAccount, toAccount, transferAmount) {
     if (fromAccount !== "external") {
       fromAccount.value -= transferAmount;
@@ -1069,182 +1336,10 @@
     }
   }
 
-  // Define the PersonalFinanceEngine Object for revealing
-  var PersonalFinanceEngine = {};
 
-  var modelParameters = {
-    timelineStartDate: new moment(),
-    timelineEndDate: new moment(),
-    userHasSelectedEndDate: false,
-    userSelectedEndDate: new moment(),
-    dataTableRecordFrequency: "Annually",
-    inflation: 0,
-  };
-  var locale = {
-    country: "None",
-    subdivision: "None"
-  };
-
-  function setCountry(inputCountry) {
-
-    var thiscountryDetailsEntry = countryDetails[inputCountry];
-
-    return new Promise( function (resolve, reject) {
-
-      if (!validateCountry(inputCountry)) {
-        var err = new InvalidInputError("Inputs failed validation", {country: true});
-        reject(err);
-      }
-
-      // If this country hasn't been selected yet, we still need to load its subdivisions
-      // from the json file.
-      // I dislike this nested promise approach: it works for now, but needs review.
-      if (!thiscountryDetailsEntry.hasBeenLoaded) {
-        subdivisionDetailsPath = thiscountryDetailsEntry.federalSubdivisionsFile;
-        var taxModelPath = thiscountryDetailsEntry.taxModelFile;
-        var taxDataPath = thiscountryDetailsEntry.taxDataFile;
-
-        var dataRequests = [];
-
-        // Populate the validSubdivisions List using the JSON file
-        var subdivRequest = makeRequest({
-          method: 'GET',
-          url: subdivisionDetailsPath
-        })
-        dataRequests.push(subdivRequest);
-        var taxDataRequest = makeRequest({
-          method: 'GET',
-          url: taxDataPath
-        })
-        dataRequests.push(taxDataRequest);
-
-        // Resolve when the above requests all finish
-        Promise.all([subdivRequest, taxDataRequest])
-        .then( function(datums) {
-          thiscountryDetailsEntry.hasBeenLoaded = true;
-
-          // Populate the subdivisionDetails and validSubdivisions array.
-          subdivisionDetails[inputCountry] = JSON.parse(datums[0]);
-          validSubdivisions = Object.keys(subdivisionDetails[inputCountry]);
-
-          // Populate the country taxData.
-          thiscountryDetailsEntry.taxData = JSON.parse(datums[1]);
-
-          locale.country = inputCountry;
-
-          // If the current subdivision isn't valid anymore then we need to
-          // default to the first one in the validSubdivisions.
-          if (!validateFederalSubdivision(locale.subdivision)) {
-            setFederalSubdivision(validSubdivisions[0])
-            resolve(setFederalSubdivision(validSubdivisions[0]));
-          } else {
-            resolve();
-          }
-        })
-        .catch(function (err) {
-          console.error("Error could not load country json file: "+err.statusText);
-          reject(err);
-        })
-      } else {
-        validSubdivisions = Object.keys(subdivisionDetails[inputCountry]);
-        locale.country = inputCountry;
-        resolve();
-      }
-    })
-  }
-
-  function setFederalSubdivision(inputSubdivision) {
-
-    var subdivisionDetailsEntry = subdivisionDetails[locale.country][inputSubdivision];
-
-    return new Promise( function (resolve, reject) {
-
-      if (validateFederalSubdivision(inputSubdivision)) {
-
-        if (!subdivisionDetailsEntry.hasBeenLoaded) {
-          var taxModelPath = subdivisionDetailsEntry.taxModelFile;
-          var taxDataPath = subdivisionDetailsEntry.taxDataFile;
-
-          var dataRequests = [];
-
-          // We've never loaded this subdivision, so we definitely need the taxData.
-          var taxDataRequest = makeRequest({
-            method: 'GET',
-            url: taxDataPath
-          })
-          dataRequests.push(taxDataRequest);
-
-          // If we don't already have it, populate the taxModel using the JS file
-          if (!taxModels[subdivisionDetailsEntry.taxModel]) {
-            var taxModelRequest = makeRequest({
-              method: 'GET',
-              url: taxModelPath
-            })
-
-            dataRequests.push(taxModelRequest);
-          }
-
-          // Resolve when the above requests all finish
-          Promise.all(dataRequests)
-          .then( function(datums) {
-            subdivisionDetailsEntry.hasBeenLoaded = true;
-
-            // Populate the subdivision taxData.
-            subdivisionDetailsEntry.taxData = JSON.parse(datums[0]);
-
-            // If the taxModel was also new, then evaluate t to have it configured.
-            if (datums.length > 1) {
-              eval(datums[1]);
-            }
-
-            resolve();
-          })
-          .catch(function (err) {
-            console.error("Error could not load federal subdivision json file: "+err.statusText);
-            reject(err);
-          })
-        } else {
-          resolve();
-        }
-      } else {
-        var err = new InvalidInputError("Inputs failed validation", {subdivision: true});
-        reject(err);
-      }
-    })
-    .then( function() {
-      locale.subdivision = inputSubdivision;
-    })
-  }
-
-  // A top level object to store more gobal details like inflation, taxes, etc. Stuff that isn't really a personalDetail.
-  var personalDetails = {
-    familyStatus: "single",   // Relationship status
-    dependentList: [],        // A list of dependents (children, infirm relatives, etc.)
-    salary: 0,                // Direct income from an external source
-    spouseSalary: 0,          // Spousal direct salary, if one exists
-    spouseDisability: false,  // Whether
-    salaryGrowth: 0,          // Expected annual salary increases as a fraction (eh 5% = 0.05)
-    retirementDate: null,     // Planned retirement date. Null = no retirement planned
-    retirementIncome: 0.5,    // Percentage of working age salary to be drawn as retirement income
-    netWorthSeries: [],       // A table to store personal net worth for charting purposes.
-  };
-  var chequingAccount = new ChequingAccount({
-    ID: "1",
-    name: "Test",
-    startDate: modelParameters.timelineStartDate, //SHould it be this date or should it be the present date? Historical transfers woul require not preset.
-    initialValue: 0,  // Start balance of $0
-    accrualRate: 0 // With a negative accrual weight (depreciation) of 5% annually.
-  });
-  var assets = {};            // Object map of assets that can appreciate or depreciate like a car or house, etc.
-  var investmentAccounts = {};// Object map for investment financial accounts like RRSP, TFSA, etc.
-  var debtAccounts = {};      // Object map like mortgage (tied to the house asset), loans, etc.
-
-  // Use a "transactional timeline" model for the financial accounts
-  // for key dates in timeline, complete transfers, and record object
-  // balances and other figures in correct tables if it's a scheduled task.
-  var timeline = {}; // The internal timeline built by constructTimeline() and used by calculate()
-  var timelineDates = [];
-  var timelineDateFormat = "YYYY-MM-DD";
+  // // //
+  //  Functions pertaining to the main calculations the model performs.
+  // // //
 
   function constructTimeline() {
 
@@ -1365,20 +1460,6 @@
     }
   }
 
-  var taxModels = {
-    None: {
-      calculateTaxTable: function() {
-        return 0;
-      },
-      getTaxRate: function(financialObject) {
-        return taxTable;
-      },
-      assetConstructor: Asset,
-      investmentConstructor: InvestmentAccount,
-      debtConstructor: DebtAccount,
-    },
-  };
-
   function getTaxModel() {
     // Using the user's locale information determine the appropriate
     // tax model, and fetch the associated .json ans .js files if necessary
@@ -1391,27 +1472,6 @@
     // Apply associated taxModel components to calculateTaxTable(), and getTaxRate();
     // Also the constructors.
   }
-
-  // A variable that stores a function for calculating taxation data tables for whatever
-  // jurisdiction the user has selected.
-  var calculateTaxTable = taxModels["None"].calculateTaxTable;
-
-  var taxData;
-
-  // An object map to store the tax data for the different types of financial objects and income
-  // the user might possess or earn.
-  var taxTable = calculateTaxTable();
-
-  // A function that uses the current tax table to find the appropriate rate for the passed financial object
-  var getTaxRate = taxModels["None"].getTaxRate;
-
-  var AssetConstructor = taxModels["None"].assetConstructor;
-  var InvestmentConstructor = taxModels["None"].investmentConstructor;
-  var DebtConstructor = taxModels["None"].debtConstructor;
-
-  // // //
-  // Functions for operating on the account objects
-  // // //
 
   function calculate() {
 
@@ -1558,7 +1618,7 @@
 
 
   // // //
-  // Supporting functions.
+  //  Validation functions for checking user inputs.
   // // //
 
   // A catch all verification function for financial objects and accounts to reduce code repetition
@@ -1743,19 +1803,6 @@
       return true;
     }
     return false;
-  }
-
-  //----------------------------------------------------------------------------------------
-  // Borrowed from http://stackoverflow.com/questions/105034/create-guid-uuid-in-javascript
-  //----------------------------------------------------------------------------------------
-  function generateUUID() {
-      var d = new Date().getTime();
-      var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          var r = (d + Math.random()*16)%16 | 0;
-          d = Math.floor(d/16);
-          return (c=='x' ? r : (r&0x3|0x8)).toString(16);
-      });
-      return uuid;
   }
 
   // Return the public objects and functions.
