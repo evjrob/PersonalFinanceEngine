@@ -1,22 +1,13 @@
 {"None": {
     "hasBeenLoaded": true,
-    "taxModel": "none",
-    "taxData": {},
-    "assetSubTypes": [],
-    "investmentSubTypes": [],
-    "debtSubTyes": []
+    "taxModel": "None",
+    "taxData": {}
   },
   "Canada":{
-    "taxModel": "canada",
+    "taxModel": "Canada",
     "taxModelFile": "taxes/taxModels/canada.js",
     "taxDataFile": "taxes/canada/taxData.json",
     "federalSubdivisionsFile": "taxes/canada/provinceList.json",
-    "federalSubdivisionWord": "Province",
-    "assetSubTypes": [],
-    "investmentSubTypes": [
-      "TFSA",
-      "RRSP"
-    ],
-    "debtSubTyes": []
+    "federalSubdivisionWord": "Province"
   }
 }

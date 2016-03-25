@@ -411,5 +411,9 @@ describe("Calculate functions", function() {
       expect(PersonalFinanceEngine.calculateTaxes).not.toBeDefined();
     });
 
+    it("should reassign the constructors for assets, investments and debts appropritely", function() {
+      expect(true).toEqual(false);
+    });
+
   })
 });

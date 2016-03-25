@@ -9,6 +9,10 @@ var getTaxRateCanada = function(financialObject) {
 }
 
 // Add the tax moodel functions like calculateTaxTable() and getTaxRate() under "canada" in the tax model.
-taxModels["canada"] = {};
-taxModels["canada"].calculateTaxTable = calculateTaxTableCanada;
-taxModels["canada"].getTaxRate = getTaxRateCanada;
+taxModels["Canada"] = {};
+taxModels["Canada"].calculateTaxTable = calculateTaxTableCanada;
+taxModels["Canada"].getTaxRate = getTaxRateCanada;
+
+// Put the constructors in. They eed to follow the consistent input format for
+// the base "None" tax model.
+// taxModels["Canada"]

@@ -350,7 +350,10 @@ describe("Model parameters and other core settings or functions", function() {
 
           expect(PersonalFinanceEngine.__test__.countryDetails["Canada"].taxData).toBeDefined();
 
-          expect(PersonalFinanceEngine.__test__.taxModels["canada"]).toBeDefined();
+          // This one is failing because it runs in the .then I have trailing setCountry
+          // where the subdivision loads the taxModel. It is basically just a matter of
+          // properly chaining that task into the promises. Needs some thought.
+          expect(PersonalFinanceEngine.__test__.taxModels["Canada"]).toBeDefined();
 
           done();
         })

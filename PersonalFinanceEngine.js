@@ -66,25 +66,16 @@
   var countryDetailsPath = "taxes/countryList.json";
   var countryDetails = {None: {
       "hasBeenLoaded": true,
-      "taxModel": "none",
-      "taxData": {},
-      "assetSubTypes": [],
-      "investmentSubTypes": [],
-      "debtSubTyes": []
+      "taxModel": "None",
+      "taxData": {}
     },
     Canada:{
-      "taxModel": "canada",
+      "taxModel": "Canada",
       "hasBeenLoaded": false,
       "taxModelFile": "taxes/taxModels/canada.js",
       "taxDataFile": "taxes/canada/taxData.json",
       "federalSubdivisionsFile": "taxes/canada/provinceList.json",
-      "federalSubdivisionWord": "Province",
-      "assetSubTypes": [],
-      "investmentSubTypes": [
-        "TFSA",
-        "RRSP"
-      ],
-      "debtSubTyes": []
+      "federalSubdivisionWord": "Province"
     }
   };
 
@@ -111,12 +102,11 @@
   var subdivisionDetailsPath = "";
   var subdivisionDetails = {
     "None": {
-      "hasBeenLoaded": true,
-      "taxModel": "none",
-      "taxData": {},
-      "assetSubTypes": [],
-      "investmentSubTypes": [],
-      "debtSubTyes": []
+      "None": {
+        "hasBeenLoaded": true,
+        "taxModel": "None",
+        "taxData": {}
+      }
     },
   };
 
@@ -231,60 +221,50 @@
     var inputWrapper = {date: inputDate};
     momentifyDates(inputWrapper);
 
-    var promise = new Promise(
-      function (resolve, reject) {
+    return new Promise( function (resolve, reject) {
+      if (validateDate(inputWrapper.date)) {
 
-        if (validateDate(inputWrapper.date)) {
+        modelParameters.userHasSelectedEndDate = true;
+        modelParameters.userSelectedEndDate = inputWrapper.date;
+        modelParameters.timelineEndDate = modelParameters.userSelectedEndDate;
 
-          modelParameters.userHasSelectedEndDate = true;
-          modelParameters.userSelectedEndDate = inputWrapper.date;
-          modelParameters.timelineEndDate = modelParameters.userSelectedEndDate;
+        resolve();
+      } else {
 
-          resolve();
-        } else {
-
-          var err = new InvalidInputError("Inputs failed validation", {date: true});
-          reject(err);
-        }
-      });
-
-    return promise;
+        var err = new InvalidInputError("Inputs failed validation", {date: true});
+        reject(err);
+      }
+    });
   }
 
   function deleteUserSelectedEndDate() {
 
-    var promise = new Promise(
-      function (resolve, reject) {
-        modelParameters.userHasSelectedEndDate = false;
-        modelParameters.timelineEndDate = findMaxDate();
+    return new Promise( function (resolve, reject) {
+      modelParameters.userHasSelectedEndDate = false;
+      modelParameters.timelineEndDate = findMaxDate();
 
-        resolve();
-      });
-
-    return promise
+      resolve();
+    });
   }
 
   // A function to set the frequency of dataTable recording to one in the momentIntervalLookup
   function setDataTableRecordFrequency(inputFrequency) {
 
-    var promise = new Promise(
-      function (resolve, reject) {
+    return new Promise( function (resolve, reject) {
 
-        // If it's a valid frequency (except weekly or biweekly: they don't
-        // play well with years for tax purposes)
-        if (validateFrequency(inputFrequency) && inputFrequency !== "Weekly" && inputFrequency !== "Biweekly") {
+      // If it's a valid frequency (except weekly or biweekly: they don't
+      // play well with years for tax purposes)
+      if (validateFrequency(inputFrequency) && inputFrequency !== "Weekly" && inputFrequency !== "Biweekly") {
 
-          modelParameters.dataTableRecordFrequency = inputFrequency;
+        modelParameters.dataTableRecordFrequency = inputFrequency;
 
-          resolve();
-        } else {
+        resolve();
+      } else {
 
-          var err = new InvalidInputError("Inputs failed validation", {frequency: true});
-          reject(err);
-        }
-      });
-
-    return promise;
+        var err = new InvalidInputError("Inputs failed validation", {frequency: true});
+        reject(err);
+      }
+    });
   }
 
   // Constructors for the parent Financial Object type and it's children types.
@@ -292,6 +272,7 @@
   // These functions are private as a helper function for each is ecxpected to
   // sanitize user inputs first.
   function FinancialObject(init) {
+    this.inputs = init;                   // A copy of teh provided inputs to be used later as needed.
     this.ID = init.ID;
     this.name = init.name;
     this.fromAccount = init.fromAccount;
@@ -356,54 +337,51 @@
     //convert the user provided native Date objects to moment objects
     momentifyDates(inputAsset);
 
-    var promise = new Promise(
-      function (resolve, reject) {
+    return new Promise( function (resolve, reject) {
 
-        var validationPassed = true;
-        var failedInputs = {
-          name: false,
-          subType: false,
-          startDate: false,
-          fromAccount: false,
-          initialValue: false,
-          accrualRate: false,
+      var validationPassed = true;
+      var failedInputs = {
+        name: false,
+        subType: false,
+        startDate: false,
+        fromAccount: false,
+        initialValue: false,
+        accrualRate: false,
+      };
+
+      validationPassed = validateAllFinancialInputs(inputAsset, failedInputs);
+
+      if (validationPassed) {
+
+        var assetID = generateUUID();
+        inputAsset.ID = assetID;
+        var asset = new AssetConstructor(inputAsset);
+        assets[assetID] = asset;
+
+        var initialTransfer = {
+          fromAccount: assets[assetID].fromAccount,
+          toAccount: assets[assetID],
+          valueFunction: function(){return asset.initialValue;},
+          date: assets[assetID].startDate,
         };
 
-        validationPassed = validateAllFinancialInputs(inputAsset, failedInputs);
+        createOneTimeTransfer(initialTransfer)
+          .then(function (returnID) {
+            assets[assetID].initialTransferID = returnID;
+            resolve(assetID);
+          })
+          .catch( function(err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            reject(err);
+          });
 
-        if (validationPassed) {
-
-          var assetID = generateUUID();
-          inputAsset.ID = assetID;
-          var asset = new Asset(inputAsset);
-          assets[assetID] = asset;
-
-          var initialTransfer = {
-            fromAccount: assets[assetID].fromAccount,
-            toAccount: assets[assetID],
-            valueFunction: function(){return asset.initialValue;},
-            date: assets[assetID].startDate,
-          };
-
-          createOneTimeTransfer(initialTransfer)
-            .then(function (returnID) {
-              assets[assetID].initialTransferID = returnID;
-              resolve(assetID);
-            })
-            .catch( function(err) {
-              if (err.name !== "InvalidInputError") {
-                throw err;
-              };
-              reject(err);
-            });
-
-        } else {
-          var err = new InvalidInputError("Inputs failed validation", failedInputs);
-          reject(err); // failure
-        };
-      });
-
-      return promise;
+      } else {
+        var err = new InvalidInputError("Inputs failed validation", failedInputs);
+        reject(err); // failure
+      };
+    });
   };
 
   // TODO:  Figure out what to do with any existing transfer definitions that get buggered up if the startDate for the
@@ -414,56 +392,53 @@
     //convert the user provided native Date objects to moment objects
     momentifyDates(inputAsset);
 
-    var promise = new Promise(
-      function (resolve, reject) {
-        // Do some input checks first, then make Asset
-        var validationPassed = true;
-        var failedInputs = {
-          name: false,
-          subType: false,
-          startDate: false,
-          fromAccount: false,
-          initialValue: false,
-          accrualRate: false,
+    return new Promise( function (resolve, reject) {
+      // Do some input checks first, then make Asset
+      var validationPassed = true;
+      var failedInputs = {
+        name: false,
+        subType: false,
+        startDate: false,
+        fromAccount: false,
+        initialValue: false,
+        accrualRate: false,
+      };
+
+      validationPassed = validateAllFinancialInputs(inputAsset, failedInputs);
+
+      if (validationPassed) {
+
+        inputAsset.ID = assetID;
+        var tempInitialTransferID = assets[assetID].initialTransferID;
+        var tempAssociatedTransfers = assets[assetID].associatedTransfers;
+        var asset = new AssetConstructor(inputAsset);
+        assets[assetID] = asset;
+        assets[assetID].initialTransferID = tempInitialTransferID;
+        assets[assetID].associatedTransfers = tempAssociatedTransfers;
+
+        var initialTransfer = {
+          fromAccount: assets[assetID].fromAccount,
+          toAccount: assets[assetID],
+          valueFunction: function(){return asset.initialValue;},
+          date: assets[assetID].startDate,
         };
 
-        validationPassed = validateAllFinancialInputs(inputAsset, failedInputs);
+        editOneTimeTransfer(assets[assetID].initialTransferID, initialTransfer)
+          .then(function (returnID) {
+            resolve(assetID);
+          })
+          .catch( function(err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            reject(err);
+          });
 
-        if (validationPassed) {
-
-          inputAsset.ID = assetID;
-          var tempInitialTransferID = assets[assetID].initialTransferID;
-          var tempAssociatedTransfers = assets[assetID].associatedTransfers;
-          var asset = new Asset(inputAsset);
-          assets[assetID] = asset;
-          assets[assetID].initialTransferID = tempInitialTransferID;
-          assets[assetID].associatedTransfers = tempAssociatedTransfers;
-
-          var initialTransfer = {
-            fromAccount: assets[assetID].fromAccount,
-            toAccount: assets[assetID],
-            valueFunction: function(){return asset.initialValue;},
-            date: assets[assetID].startDate,
-          };
-
-          editOneTimeTransfer(assets[assetID].initialTransferID, initialTransfer)
-            .then(function (returnID) {
-              resolve(assetID);
-            })
-            .catch( function(err) {
-              if (err.name !== "InvalidInputError") {
-                throw err;
-              };
-              reject(err);
-            });
-
-        } else {
-          var err = new InvalidInputError("Inputs failed validation", failedInputs);
-          reject(err); // failure
-        };
-      });
-
-    return promise;
+      } else {
+        var err = new InvalidInputError("Inputs failed validation", failedInputs);
+        reject(err); // failure
+      };
+    });
   };
 
   function deleteAsset(assetID) {
@@ -478,72 +453,69 @@
     // convert the user provided native Date objects to moment objects
     momentifyDates(inputInvestment);
 
-    var promise = new Promise(
-      function (resolve, reject) {
-        // Do some input checks first, then make Investment
-        var validationPassed = true;
-        var failedInputs = {
-          name: false,
-          subType: false,
-          startDate: false,
-          fromAccount: false,
-          initialValue: false,
-          accrualRate: false,
-          accrualPaymentFrequency: false,
+    return new Promise( function (resolve, reject) {
+      // Do some input checks first, then make Investment
+      var validationPassed = true;
+      var failedInputs = {
+        name: false,
+        subType: false,
+        startDate: false,
+        fromAccount: false,
+        initialValue: false,
+        accrualRate: false,
+        accrualPaymentFrequency: false,
+      };
+
+      validationPassed = validateAllFinancialInputs(inputInvestment, failedInputs);
+
+      if (validationPassed) {
+
+        var investmentID = generateUUID();
+        inputInvestment.ID = investmentID;
+        var investment = new InvestmentConstructor(inputInvestment);
+        investmentAccounts[investmentID] = investment;
+
+        var initialTransfer = {
+          fromAccount: investmentAccounts[investmentID].fromAccount,
+          toAccount: investmentAccounts[investmentID],
+          valueFunction: function(){return investment.initialValue;},
+          date: investmentAccounts[investmentID].startDate,
         };
 
-        validationPassed = validateAllFinancialInputs(inputInvestment, failedInputs);
-
-        if (validationPassed) {
-
-          var investmentID = generateUUID();
-          inputInvestment.ID = investmentID;
-          var investment = new InvestmentAccount(inputInvestment);
-          investmentAccounts[investmentID] = investment;
-
-          var initialTransfer = {
-            fromAccount: investmentAccounts[investmentID].fromAccount,
-            toAccount: investmentAccounts[investmentID],
-            valueFunction: function(){return investment.initialValue;},
-            date: investmentAccounts[investmentID].startDate,
-          };
-
-          var accrualTransfer = {
-            fromAccount: "external",
-            toAccount: investmentAccounts[investmentID],
-            valueFunction: function(){
-              var amount = investment['accrualBuffer'];
-              investment.accrualBuffer = 0;
-              return amount;
-            },
-            startDate: investmentAccounts[investmentID].startDate,
-            frequency: investmentAccounts[investmentID].accrualPaymentFrequency,
-          };
-
-          createOneTimeTransfer(initialTransfer)
-            .then(function (returnID) {
-              investmentAccounts[investmentID].initialTransferID = returnID;
-              return createRecurringTransfer(accrualTransfer);
-            })
-            .then(function (returnID) {
-              investmentAccounts[investmentID].accrualTransferID = returnID;
-              resolve(investmentID);
-            })
-            .catch( function(err) {
-              if (err.name !== "InvalidInputError") {
-                throw err;
-              };
-              reject(err);
-            });
-
-        } else {
-
-          var err = new InvalidInputError("Inputs failed validation", failedInputs);
-          reject(err); //failed
+        var accrualTransfer = {
+          fromAccount: "external",
+          toAccount: investmentAccounts[investmentID],
+          valueFunction: function(){
+            var amount = investment['accrualBuffer'];
+            investment.accrualBuffer = 0;
+            return amount;
+          },
+          startDate: investmentAccounts[investmentID].startDate,
+          frequency: investmentAccounts[investmentID].accrualPaymentFrequency,
         };
-      });
 
-    return promise;
+        createOneTimeTransfer(initialTransfer)
+          .then(function (returnID) {
+            investmentAccounts[investmentID].initialTransferID = returnID;
+            return createRecurringTransfer(accrualTransfer);
+          })
+          .then(function (returnID) {
+            investmentAccounts[investmentID].accrualTransferID = returnID;
+            resolve(investmentID);
+          })
+          .catch( function(err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            reject(err);
+          });
+
+      } else {
+
+        var err = new InvalidInputError("Inputs failed validation", failedInputs);
+        reject(err); //failed
+      };
+    });
   };
 
   function editInvestment(investmentID, inputInvestment) {
@@ -551,76 +523,73 @@
     //convert the user provided native Date objects to moment objects
     momentifyDates(inputInvestment);
 
-    var promise = new Promise(
-      function (resolve, reject) {
-        // Do some input checks first, then make Investment
-        var validationPassed = true;
-        var failedInputs = {
-          name: false,
-          subType: false,
-          startDate: false,
-          fromAccount: false,
-          initialValue: false,
-          accrualRate: false,
-          accrualPaymentFrequency: false,
+    return new Promise( function (resolve, reject) {
+      // Do some input checks first, then make Investment
+      var validationPassed = true;
+      var failedInputs = {
+        name: false,
+        subType: false,
+        startDate: false,
+        fromAccount: false,
+        initialValue: false,
+        accrualRate: false,
+        accrualPaymentFrequency: false,
+      };
+
+      validationPassed = validateAllFinancialInputs(inputInvestment, failedInputs);
+
+      if (validationPassed) {
+
+        inputInvestment.ID = investmentID;
+        var tempInitialTransferID = investmentAccounts[investmentID].initialTransferID;
+        var tempAccrualTransferID = investmentAccounts[investmentID].accrualTransferID;
+        var tempAssociatedTransfers = investmentAccounts[investmentID].associatedTransfers;
+        var investment = new InvestmentConstructor(inputInvestment);
+        investmentAccounts[investmentID] = investment;
+        investmentAccounts[investmentID].initialTransferID = tempInitialTransferID;
+        investmentAccounts[investmentID].accrualTransferID = tempAccrualTransferID;
+        investmentAccounts[investmentID].associatedTransfers = tempAssociatedTransfers;
+
+        var initialTransfer = {
+          fromAccount: investmentAccounts[investmentID].fromAccount,
+          toAccount: investmentAccounts[investmentID],
+          valueFunction: function(){return investment.initialValue;},
+          date: investmentAccounts[investmentID].startDate,
         };
 
-        validationPassed = validateAllFinancialInputs(inputInvestment, failedInputs);
-
-        if (validationPassed) {
-
-          inputInvestment.ID = investmentID;
-          var tempInitialTransferID = investmentAccounts[investmentID].initialTransferID;
-          var tempAccrualTransferID = investmentAccounts[investmentID].accrualTransferID;
-          var tempAssociatedTransfers = investmentAccounts[investmentID].associatedTransfers;
-          var investment = new InvestmentAccount(inputInvestment);
-          investmentAccounts[investmentID] = investment;
-          investmentAccounts[investmentID].initialTransferID = tempInitialTransferID;
-          investmentAccounts[investmentID].accrualTransferID = tempAccrualTransferID;
-          investmentAccounts[investmentID].associatedTransfers = tempAssociatedTransfers;
-
-          var initialTransfer = {
-            fromAccount: investmentAccounts[investmentID].fromAccount,
-            toAccount: investmentAccounts[investmentID],
-            valueFunction: function(){return investment.initialValue;},
-            date: investmentAccounts[investmentID].startDate,
-          };
-
-          var accrualTransfer = {
-            fromAccount: "external",
-            toAccount: investmentAccounts[investmentID],
-            valueFunction: function(){
-              var amount = investment['accrualBuffer'];
-              investment.accrualBuffer = 0;
-              return amount;
-            },
-            startDate: investmentAccounts[investmentID].startDate,
-            frequency: investmentAccounts[investmentID].accrualPaymentFrequency,
-          };
-
-          editOneTimeTransfer(investmentAccounts[investmentID].initialTransferID, initialTransfer)
-            .then(function (returnID) {
-              return editRecurringTransfer(investmentAccounts[investmentID].accrualTransferID, accrualTransfer);
-            })
-            .then(function (returnID) {
-              resolve(investmentID);
-            })
-            .catch( function(err) {
-              if (err.name !== "InvalidInputError") {
-                throw err;
-              };
-              reject(err);
-            });
-
-        } else {
-
-          var err = new InvalidInputError("Inputs failed validation", failedInputs);
-          reject(err);
-
+        var accrualTransfer = {
+          fromAccount: "external",
+          toAccount: investmentAccounts[investmentID],
+          valueFunction: function(){
+            var amount = investment['accrualBuffer'];
+            investment.accrualBuffer = 0;
+            return amount;
+          },
+          startDate: investmentAccounts[investmentID].startDate,
+          frequency: investmentAccounts[investmentID].accrualPaymentFrequency,
         };
-      });
 
-    return promise;
+        editOneTimeTransfer(investmentAccounts[investmentID].initialTransferID, initialTransfer)
+          .then(function (returnID) {
+            return editRecurringTransfer(investmentAccounts[investmentID].accrualTransferID, accrualTransfer);
+          })
+          .then(function (returnID) {
+            resolve(investmentID);
+          })
+          .catch( function(err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            reject(err);
+          });
+
+      } else {
+
+        var err = new InvalidInputError("Inputs failed validation", failedInputs);
+        reject(err);
+
+      };
+    });
   };
 
   function deleteInvestment(investmentID) {
@@ -635,72 +604,69 @@
     //convert the user provided native Date objects to moment objects
     momentifyDates(inputDebt);
 
-    var promise = new Promise(
-      function (resolve, reject) {
-        // Do some input checks first, then make Debt
-        var validationPassed = true;
-        var failedInputs = {
-          name: false,
-          subType: false,
-          startDate: false,
-          fromAccount: false,
-          initialValue: false,
-          accrualRate: false,
-          accrualPaymentFrequency: false,
+    return new Promise( function (resolve, reject) {
+      // Do some input checks first, then make Debt
+      var validationPassed = true;
+      var failedInputs = {
+        name: false,
+        subType: false,
+        startDate: false,
+        fromAccount: false,
+        initialValue: false,
+        accrualRate: false,
+        accrualPaymentFrequency: false,
+      };
+
+      validationPassed = validateAllFinancialInputs(inputDebt, failedInputs);
+
+      if (validationPassed) {
+
+        var debtID = generateUUID();
+        inputDebt.ID = debtID;
+        var debt = new DebtConstructor(inputDebt);
+        debtAccounts[debtID] = debt;
+
+        var initialTransfer = {
+          fromAccount: debtAccounts[debtID].fromAccount,
+          toAccount: debtAccounts[debtID],
+          valueFunction: function(){return debt.initialValue;},
+          date: debtAccounts[debtID].startDate,
         };
 
-        validationPassed = validateAllFinancialInputs(inputDebt, failedInputs);
-
-        if (validationPassed) {
-
-          var debtID = generateUUID();
-          inputDebt.ID = debtID;
-          var debt = new DebtAccount(inputDebt);
-          debtAccounts[debtID] = debt;
-
-          var initialTransfer = {
-            fromAccount: debtAccounts[debtID].fromAccount,
-            toAccount: debtAccounts[debtID],
-            valueFunction: function(){return debt.initialValue;},
-            date: debtAccounts[debtID].startDate,
-          };
-
-          var accrualTransfer = {
-            fromAccount: "external",
-            toAccount: debtAccounts[debtID],
-            valueFunction: function(){
-              var amount = debt['accrualBuffer'];
-              debt.accrualBuffer = 0;
-              return amount;
-            },
-            startDate: debtAccounts[debtID].startDate,
-            frequency: debtAccounts[debtID].accrualPaymentFrequency,
-          };
-
-          createOneTimeTransfer(initialTransfer)
-            .then(function (returnID) {
-              debtAccounts[debtID].initialTransferID = returnID;
-              return createRecurringTransfer(accrualTransfer);
-            })
-            .then(function (returnID) {
-              debtAccounts[debtID].accrualTransferID = returnID;
-              resolve(debtID);
-            })
-            .catch( function(err) {
-              if (err.name !== "InvalidInputError") {
-                throw err;
-              };
-              reject(err);
-            });
-
-        } else {
-
-          var err = new InvalidInputError("Inputs failed validation", failedInputs);
-          reject(err);
+        var accrualTransfer = {
+          fromAccount: "external",
+          toAccount: debtAccounts[debtID],
+          valueFunction: function(){
+            var amount = debt['accrualBuffer'];
+            debt.accrualBuffer = 0;
+            return amount;
+          },
+          startDate: debtAccounts[debtID].startDate,
+          frequency: debtAccounts[debtID].accrualPaymentFrequency,
         };
-      });
 
-    return promise;
+        createOneTimeTransfer(initialTransfer)
+          .then(function (returnID) {
+            debtAccounts[debtID].initialTransferID = returnID;
+            return createRecurringTransfer(accrualTransfer);
+          })
+          .then(function (returnID) {
+            debtAccounts[debtID].accrualTransferID = returnID;
+            resolve(debtID);
+          })
+          .catch( function(err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            reject(err);
+          });
+
+      } else {
+
+        var err = new InvalidInputError("Inputs failed validation", failedInputs);
+        reject(err);
+      };
+    });
   };
 
   function editDebt(debtID, inputDebt) {
@@ -708,76 +674,73 @@
     //convert the user provided native Date objects to moment objects
     momentifyDates(inputDebt);
 
-    var promise = new Promise(
-      function (resolve, reject) {
-        // Do some input checks first, then make Debt
-        var validationPassed = true;
-        var failedInputs = {
-          name: false,
-          subType: false,
-          startDate: false,
-          fromAccount: false,
-          initialValue: false,
-          accrualRate: false,
-          accrualPaymentFrequency: false,
+    return new Promise( function (resolve, reject) {
+      // Do some input checks first, then make Debt
+      var validationPassed = true;
+      var failedInputs = {
+        name: false,
+        subType: false,
+        startDate: false,
+        fromAccount: false,
+        initialValue: false,
+        accrualRate: false,
+        accrualPaymentFrequency: false,
+      };
+
+      validationPassed = validateAllFinancialInputs(inputDebt, failedInputs);
+
+      if (validationPassed) {
+
+        inputDebt.ID = debtID;
+        var tempInitialTransferID = debtAccounts[debtID].initialTransferID;
+        var tempAccrualTransferID = debtAccounts[debtID].accrualTransferID;
+        var tempAssociatedTransfers = debtAccounts[debtID].associatedTransfers;
+        var debt = new DebtConstructor(inputDebt);
+        debtAccounts[debtID] = debt;
+        debtAccounts[debtID].initialTransferID = tempInitialTransferID;
+        debtAccounts[debtID].accrualTransferID = tempAccrualTransferID;
+        debtAccounts[debtID].associatedTransfers = tempAssociatedTransfers;
+
+        var initialTransfer = {
+          fromAccount: debtAccounts[debtID].fromAccount,
+          toAccount: debtAccounts[debtID],
+          valueFunction: function(){return debt.initialValue;},
+          date: debtAccounts[debtID].startDate,
         };
 
-        validationPassed = validateAllFinancialInputs(inputDebt, failedInputs);
-
-        if (validationPassed) {
-
-          inputDebt.ID = debtID;
-          var tempInitialTransferID = debtAccounts[debtID].initialTransferID;
-          var tempAccrualTransferID = debtAccounts[debtID].accrualTransferID;
-          var tempAssociatedTransfers = debtAccounts[debtID].associatedTransfers;
-          var debt = new DebtAccount(inputDebt);
-          debtAccounts[debtID] = debt;
-          debtAccounts[debtID].initialTransferID = tempInitialTransferID;
-          debtAccounts[debtID].accrualTransferID = tempAccrualTransferID;
-          debtAccounts[debtID].associatedTransfers = tempAssociatedTransfers;
-
-          var initialTransfer = {
-            fromAccount: debtAccounts[debtID].fromAccount,
-            toAccount: debtAccounts[debtID],
-            valueFunction: function(){return debt.initialValue;},
-            date: debtAccounts[debtID].startDate,
-          };
-
-          var accrualTransfer = {
-            fromAccount: "external",
-            toAccount: debtAccounts[debtID],
-            valueFunction: function(){
-              var amount = debt['accrualBuffer'];
-              debt.accrualBuffer = 0;
-              return amount;
-            },
-            startDate: debtAccounts[debtID].startDate,
-            frequency: debtAccounts[debtID].accrualPaymentFrequency,
-          };
-
-          editOneTimeTransfer(debtAccounts[debtID].initialTransferID, initialTransfer)
-            .then( function () {
-              return editRecurringTransfer(debtAccounts[debtID].accrualTransferID, accrualTransfer);
-            })
-            .then(function (returnID) {
-              resolve(debtID);
-            })
-            .catch( function(err) {
-              if (err.name !== "InvalidInputError") {
-                throw err;
-              };
-              reject(err);
-            });
-
-        } else {
-
-          var err = new InvalidInputError("Inputs failed validation", failedInputs);
-          reject(err);
-
+        var accrualTransfer = {
+          fromAccount: "external",
+          toAccount: debtAccounts[debtID],
+          valueFunction: function(){
+            var amount = debt['accrualBuffer'];
+            debt.accrualBuffer = 0;
+            return amount;
+          },
+          startDate: debtAccounts[debtID].startDate,
+          frequency: debtAccounts[debtID].accrualPaymentFrequency,
         };
-      });
 
-    return promise;
+        editOneTimeTransfer(debtAccounts[debtID].initialTransferID, initialTransfer)
+          .then( function () {
+            return editRecurringTransfer(debtAccounts[debtID].accrualTransferID, accrualTransfer);
+          })
+          .then(function (returnID) {
+            resolve(debtID);
+          })
+          .catch( function(err) {
+            if (err.name !== "InvalidInputError") {
+              throw err;
+            };
+            reject(err);
+          });
+
+      } else {
+
+        var err = new InvalidInputError("Inputs failed validation", failedInputs);
+        reject(err);
+
+      };
+    });
   };
 
   function deleteDebt(debtID) {
@@ -790,36 +753,33 @@
   // individual Asset, Investment, Debt functions for function naming consistency.
   function deleteFinancialObject(UUID, storageMap) {
 
-    var promise = new Promise(
-      function (resolve, reject) {
-        // verify the transferID is found
-        var financialObject = storageMap[UUID];
+    return new Promise( function (resolve, reject) {
+      // verify the transferID is found
+      var financialObject = storageMap[UUID];
 
-        if (validateFinancialObject(financialObject)) {
+      if (validateFinancialObject(financialObject)) {
 
-          financialObject.associatedTransfers.forEach( function(value) {
+        financialObject.associatedTransfers.forEach( function(value) {
 
-            if (transferDefinitions[value] !== undefined && transferDefinitions[value] !== null) {
-              if (transferDefinitions[value].toAccount === financialObject) {
-                transferDefinitions[value].toAccount = "external";
-              };
-              if (transferDefinitions[value].fromAccount === financialObject) {
-                transferDefinitions[value].fromAccount = "external";
-              };
-              // Delete the transfer if both toAccount and fromAccount are "external"
-              if (transferDefinitions[value].toAccount === "external" && transferDefinitions[value].fromAccount === "external") {
-                deleteTransfer(value);
-              };
+          if (transferDefinitions[value] !== undefined && transferDefinitions[value] !== null) {
+            if (transferDefinitions[value].toAccount === financialObject) {
+              transferDefinitions[value].toAccount = "external";
             };
-          });
+            if (transferDefinitions[value].fromAccount === financialObject) {
+              transferDefinitions[value].fromAccount = "external";
+            };
+            // Delete the transfer if both toAccount and fromAccount are "external"
+            if (transferDefinitions[value].toAccount === "external" && transferDefinitions[value].fromAccount === "external") {
+              deleteTransfer(value);
+            };
+          };
+        });
 
-          delete storageMap[UUID];
-        };
+        delete storageMap[UUID];
+      };
 
-        resolve(null);
-      });
-
-    return promise;
+      resolve(null);
+    });
   };
 
   // A map of all the transfer definitions created by the user and by the initial value transfers for the
@@ -860,255 +820,241 @@
     //convert the user provided native Date objects to moment objects
     momentifyDates(newTransfer);
 
-    var promise = new Promise(
-      function (resolve, reject) {
+    return new Promise( function (resolve, reject) {
 
-        var validationPassed = true;
-        var failedInputs = {
-          fromAccount: false,
-          toAccount: false,
-          valueFunction: false,
-          date: false
-        };
+      var validationPassed = true;
+      var failedInputs = {
+        fromAccount: false,
+        toAccount: false,
+        valueFunction: false,
+        date: false
+      };
 
-        validationPassed = validateAllTransferInputs(newTransfer, failedInputs);
+      validationPassed = validateAllTransferInputs(newTransfer, failedInputs);
 
-        if (validationPassed) {
+      if (validationPassed) {
 
-          // return an error object matching newTransfer's properties but with false for failed validaions
-          var transferID = generateUUID();
-          var transferDef = new OneTimeTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, newTransfer.date);
-          transferDefinitions[transferID] = transferDef;
+        // return an error object matching newTransfer's properties but with false for failed validaions
+        var transferID = generateUUID();
+        var transferDef = new OneTimeTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, newTransfer.date);
+        transferDefinitions[transferID] = transferDef;
 
-          // Add the transferID to the associatedTransfers arrays on each FinancialAccount
-          if (newTransfer.fromAccount !== "external") {
-            if (newTransfer.fromAccount.associatedTransfers.indexOf(transferID) === -1) {
-              newTransfer.fromAccount.associatedTransfers.push(transferID);
-            }
+        // Add the transferID to the associatedTransfers arrays on each FinancialAccount
+        if (newTransfer.fromAccount !== "external") {
+          if (newTransfer.fromAccount.associatedTransfers.indexOf(transferID) === -1) {
+            newTransfer.fromAccount.associatedTransfers.push(transferID);
           }
-
-          if (newTransfer.toAccount !== "external") {
-            if (newTransfer.toAccount.associatedTransfers.indexOf(transferID) === -1) {
-              newTransfer.toAccount.associatedTransfers.push(transferID);
-            }
-          }
-
-          modelParameters.timelineStartDate = findMinDate();
-          modelParameters.timelineEndDate = findMaxDate();
-          resolve(transferID);
-
-        } else {
-
-          var err = new InvalidInputError("Inputs failed validation", failedInputs);
-          reject(err);
-
         }
-      });
 
-    return promise;
+        if (newTransfer.toAccount !== "external") {
+          if (newTransfer.toAccount.associatedTransfers.indexOf(transferID) === -1) {
+            newTransfer.toAccount.associatedTransfers.push(transferID);
+          }
+        }
+
+        modelParameters.timelineStartDate = findMinDate();
+        modelParameters.timelineEndDate = findMaxDate();
+        resolve(transferID);
+
+      } else {
+
+        var err = new InvalidInputError("Inputs failed validation", failedInputs);
+        reject(err);
+
+      }
+    });
   };
   function editOneTimeTransfer(transferID, newTransfer) {
 
     //convert the user provided native Date objects to moment objects
     momentifyDates(newTransfer);
 
-    var promise = new Promise(
-      function (resolve, reject) {
+    return new Promise( function (resolve, reject) {
 
-        var validationPassed = true;
-        var failedInputs = {
-          fromAccount: false,
-          toAccount: false,
-          valueFunction: false,
-          date: false
-        };
+      var validationPassed = true;
+      var failedInputs = {
+        fromAccount: false,
+        toAccount: false,
+        valueFunction: false,
+        date: false
+      };
 
-        validationPassed = validateAllTransferInputs(newTransfer, failedInputs);
+      validationPassed = validateAllTransferInputs(newTransfer, failedInputs);
 
-        if (validationPassed) {
+      if (validationPassed) {
 
-          var originalFromAccount = transferDefinitions[transferID].fromAccount;
-          var originalToAccount = transferDefinitions[transferID].toAccount;
+        var originalFromAccount = transferDefinitions[transferID].fromAccount;
+        var originalToAccount = transferDefinitions[transferID].toAccount;
 
-          // return an  error object matching newTransfer's properties but with false for failed validaions
-          var transferDef = new OneTimeTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, newTransfer.date);
+        // return an  error object matching newTransfer's properties but with false for failed validaions
+        var transferDef = new OneTimeTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, newTransfer.date);
 
-          // If the accounts changed then delete the existing account(s) and add the new ones.
-          if (newTransfer.fromAccount !== "external") {
-            if (newTransfer.fromAccount !== originalFromAccount && newTransfer.fromAccount.associatedTransfers.indexOf(transferID) === -1) {
-              newTransfer.fromAccount.associatedTransfers.push(transferID);
-              var fromAccountTransferIndex = originalFromAccount.associatedTransfers.indexOf(transferID);
-              originalFromAccount.associatedTransfers.splice(fromAccountTransferIndex, 1);
-            }
+        // If the accounts changed then delete the existing account(s) and add the new ones.
+        if (newTransfer.fromAccount !== "external") {
+          if (newTransfer.fromAccount !== originalFromAccount && newTransfer.fromAccount.associatedTransfers.indexOf(transferID) === -1) {
+            newTransfer.fromAccount.associatedTransfers.push(transferID);
+            var fromAccountTransferIndex = originalFromAccount.associatedTransfers.indexOf(transferID);
+            originalFromAccount.associatedTransfers.splice(fromAccountTransferIndex, 1);
           }
+        }
 
-          if (newTransfer.toAccount !== "external") {
-            if (newTransfer.toAccount !== originalToAccount && newTransfer.toAccount.associatedTransfers.indexOf(transferID) === -1) {
-              newTransfer.toAccount.associatedTransfers.push(transferID);
-              var toAccountTransferIndex = originalToAccount.associatedTransfers.indexOf(transferID);
-              originalToAccount.associatedTransfers.splice(toAccountTransferIndex, 1);
-            }
+        if (newTransfer.toAccount !== "external") {
+          if (newTransfer.toAccount !== originalToAccount && newTransfer.toAccount.associatedTransfers.indexOf(transferID) === -1) {
+            newTransfer.toAccount.associatedTransfers.push(transferID);
+            var toAccountTransferIndex = originalToAccount.associatedTransfers.indexOf(transferID);
+            originalToAccount.associatedTransfers.splice(toAccountTransferIndex, 1);
           }
+        }
 
-          transferDefinitions[transferID] = transferDef;
+        transferDefinitions[transferID] = transferDef;
 
-          modelParameters.timelineStartDate = findMinDate();
-          modelParameters.timelineEndDate = findMaxDate();
-          resolve(transferID);
+        modelParameters.timelineStartDate = findMinDate();
+        modelParameters.timelineEndDate = findMaxDate();
+        resolve(transferID);
 
-        } else {
+      } else {
 
-          var err = new InvalidInputError("Inputs failed validation", failedInputs);
-          reject(err);
+        var err = new InvalidInputError("Inputs failed validation", failedInputs);
+        reject(err);
 
-        };
-      });
-
-    return promise;
+      };
+    });
   };
   function createRecurringTransfer(newTransfer) {
 
     //convert the user provided native Date objects to moment objects
     momentifyDates(newTransfer);
 
-    var promise = new Promise(
-      function (resolve, reject) {
+    return new Promise( function (resolve, reject) {
 
-        var validationPassed = true;
-        var failedInputs = {
-          fromAccount: false,
-          toAccount: false,
-          valueFunction: false,
-          startDate: false,
-          endDate: false,
-          frequency: false,
-        };
+      var validationPassed = true;
+      var failedInputs = {
+        fromAccount: false,
+        toAccount: false,
+        valueFunction: false,
+        startDate: false,
+        endDate: false,
+        frequency: false,
+      };
 
-        validationPassed = validateAllTransferInputs(newTransfer, failedInputs);
+      validationPassed = validateAllTransferInputs(newTransfer, failedInputs);
 
-        if (validationPassed) {
+      if (validationPassed) {
 
-          // return an error object matching newTransfer's properties but with false for failed validaions
-          var transferID = generateUUID();
-          var transferDef = new RecurringTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, newTransfer.startDate, newTransfer.endDate, newTransfer.frequency);
-          transferDefinitions[transferID] = transferDef;
+        // return an error object matching newTransfer's properties but with false for failed validaions
+        var transferID = generateUUID();
+        var transferDef = new RecurringTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, newTransfer.startDate, newTransfer.endDate, newTransfer.frequency);
+        transferDefinitions[transferID] = transferDef;
 
-          // Add the transferID to the associatedTransfers arrays on each FinancialAccount
-          if (newTransfer.fromAccount !== "external") {
-            if (newTransfer.fromAccount.associatedTransfers.indexOf(transferID) === -1) {
-              newTransfer.fromAccount.associatedTransfers.push(transferID);
-            }
+        // Add the transferID to the associatedTransfers arrays on each FinancialAccount
+        if (newTransfer.fromAccount !== "external") {
+          if (newTransfer.fromAccount.associatedTransfers.indexOf(transferID) === -1) {
+            newTransfer.fromAccount.associatedTransfers.push(transferID);
           }
+        }
 
-          if (newTransfer.toAccount !== "external") {
-            if (newTransfer.toAccount.associatedTransfers.indexOf(transferID) === -1) {
-              newTransfer.toAccount.associatedTransfers.push(transferID);
-            }
+        if (newTransfer.toAccount !== "external") {
+          if (newTransfer.toAccount.associatedTransfers.indexOf(transferID) === -1) {
+            newTransfer.toAccount.associatedTransfers.push(transferID);
           }
+        }
 
-          modelParameters.timelineStartDate = findMinDate();
-          modelParameters.timelineEndDate = findMaxDate();
-          resolve(transferID);
+        modelParameters.timelineStartDate = findMinDate();
+        modelParameters.timelineEndDate = findMaxDate();
+        resolve(transferID);
 
-        } else {
+      } else {
 
-          var err = new InvalidInputError("Inputs failed validation", failedInputs);
-          reject(err);
+        var err = new InvalidInputError("Inputs failed validation", failedInputs);
+        reject(err);
 
-        };
-      });
-
-    return promise;
+      };
+    });
   };
   function editRecurringTransfer(transferID, newTransfer) {
 
     //convert the user provided native Date objects to moment objects
     momentifyDates(newTransfer);
 
-    var promise = new Promise(
-      function (resolve, reject) {
+    return new Promise( function (resolve, reject) {
 
-        var validationPassed = true;
-        var failedInputs = {
-          fromAccount: false,
-          toAccount: false,
-          valueFunction: false,
-          startDate: false,
-          endDate: false,
-          frequency: false,
-        };
+      var validationPassed = true;
+      var failedInputs = {
+        fromAccount: false,
+        toAccount: false,
+        valueFunction: false,
+        startDate: false,
+        endDate: false,
+        frequency: false,
+      };
 
-        validationPassed = validateAllTransferInputs(newTransfer, failedInputs);
+      validationPassed = validateAllTransferInputs(newTransfer, failedInputs);
 
-        if (validationPassed) {
+      if (validationPassed) {
 
-          var originalFromAccount = transferDefinitions[transferID].fromAccount;
-          var originalToAccount = transferDefinitions[transferID].toAccount;
+        var originalFromAccount = transferDefinitions[transferID].fromAccount;
+        var originalToAccount = transferDefinitions[transferID].toAccount;
 
-          var transferDef = new RecurringTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, newTransfer.startDate, newTransfer.endDate, newTransfer.frequency);
+        var transferDef = new RecurringTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, newTransfer.startDate, newTransfer.endDate, newTransfer.frequency);
 
-          // If the accounts changed then delete the existing account(s) and add the new ones.
-          if (newTransfer.fromAccount !== "external") {
-            if (newTransfer.fromAccount !== originalFromAccount && newTransfer.fromAccount.associatedTransfers.indexOf(transferID) === -1) {
-              newTransfer.fromAccount.associatedTransfers.push(transferID);
-              var fromAccountTransferIndex = originalFromAccount.associatedTransfers.indexOf(transferID);
-              originalFromAccount.associatedTransfers.splice(fromAccountTransferIndex, 1);
-            }
+        // If the accounts changed then delete the existing account(s) and add the new ones.
+        if (newTransfer.fromAccount !== "external") {
+          if (newTransfer.fromAccount !== originalFromAccount && newTransfer.fromAccount.associatedTransfers.indexOf(transferID) === -1) {
+            newTransfer.fromAccount.associatedTransfers.push(transferID);
+            var fromAccountTransferIndex = originalFromAccount.associatedTransfers.indexOf(transferID);
+            originalFromAccount.associatedTransfers.splice(fromAccountTransferIndex, 1);
           }
+        }
 
-          if (newTransfer.fromAccount !== "external") {
-            if (newTransfer.toAccount !== originalToAccount && newTransfer.toAccount.associatedTransfers.indexOf(transferID) === -1) {
-              newTransfer.toAccount.associatedTransfers.push(transferID);
-              var toAccountTransferIndex = originalToAccount.associatedTransfers.indexOf(transferID);
-              originalToAccount.associatedTransfers.splice(toAccountTransferIndex, 1);
-            }
+        if (newTransfer.fromAccount !== "external") {
+          if (newTransfer.toAccount !== originalToAccount && newTransfer.toAccount.associatedTransfers.indexOf(transferID) === -1) {
+            newTransfer.toAccount.associatedTransfers.push(transferID);
+            var toAccountTransferIndex = originalToAccount.associatedTransfers.indexOf(transferID);
+            originalToAccount.associatedTransfers.splice(toAccountTransferIndex, 1);
           }
+        }
 
-          transferDefinitions[transferID] = transferDef;
+        transferDefinitions[transferID] = transferDef;
 
-          modelParameters.timelineStartDate = findMinDate();
-          modelParameters.timelineEndDate = findMaxDate();
-          resolve(transferID);
+        modelParameters.timelineStartDate = findMinDate();
+        modelParameters.timelineEndDate = findMaxDate();
+        resolve(transferID);
 
-        } else {
+      } else {
 
-          var err = new InvalidInputError("Inputs failed validation", failedInputs);
-          reject(err);
+        var err = new InvalidInputError("Inputs failed validation", failedInputs);
+        reject(err);
 
-        };
-      });
-
-    return promise;
+      };
+    });
   };
   function deleteTransfer(transferID) {
 
-    var promise = new Promise(
-      function (resolve, reject) {
-        // verify the transferID is found
-        var transfer = transferDefinitions[transferID];
+    return new Promise( function (resolve, reject) {
+      // verify the transferID is found
+      var transfer = transferDefinitions[transferID];
 
-        if (transfer !== undefined && transfer !== null) {
-          // delete the transferID from the associatedTransfers on each
-          if (transfer.fromAccount !== "external") {
-            var fromAccountTransferIndex = transfer.fromAccount.associatedTransfers.indexOf(transferID);
-            if (fromAccountTransferIndex !== -1) {
-              transfer.fromAccount.associatedTransfers.splice(fromAccountTransferIndex, 1);
-            }
+      if (transfer !== undefined && transfer !== null) {
+        // delete the transferID from the associatedTransfers on each
+        if (transfer.fromAccount !== "external") {
+          var fromAccountTransferIndex = transfer.fromAccount.associatedTransfers.indexOf(transferID);
+          if (fromAccountTransferIndex !== -1) {
+            transfer.fromAccount.associatedTransfers.splice(fromAccountTransferIndex, 1);
           }
-          if (transfer.toAccount !== "external") {
-            var toAccountTransferIndex = transfer.toAccount.associatedTransfers.indexOf(transferID);
-            if (toAccountTransferIndex !== -1) {
-              transfer.toAccount.associatedTransfers.splice(toAccountTransferIndex, 1);
-            }
+        }
+        if (transfer.toAccount !== "external") {
+          var toAccountTransferIndex = transfer.toAccount.associatedTransfers.indexOf(transferID);
+          if (toAccountTransferIndex !== -1) {
+            transfer.toAccount.associatedTransfers.splice(toAccountTransferIndex, 1);
           }
+        }
 
-          delete transferDefinitions[transferID];
-          modelParameters.timelineStartDate = findMinDate();
-        };
+        delete transferDefinitions[transferID];
+        modelParameters.timelineStartDate = findMinDate();
+      };
 
-        resolve(null);
-      });
-    return promise;
+      resolve(null);
+    });
   };
 
   // A transfer method to transfer funds from account1 to account2
@@ -1145,73 +1091,65 @@
 
     return new Promise( function (resolve, reject) {
 
-      if (validateCountry(inputCountry)) {
-
-        // If this country hasn't been selected yet, we still need to load its subdivisions
-        // from the json file.
-        // I dislike this nested promise approach: it works for now, but needs review.
-        if (!thiscountryDetailsEntry.hasBeenLoaded) {
-          subdivisionDetailsPath = thiscountryDetailsEntry.federalSubdivisionsFile;
-          var taxModelPath = thiscountryDetailsEntry.taxModelFile;
-          var taxDataPath = thiscountryDetailsEntry.taxDataFile;
-
-          var dataRequests = [];
-
-          // Populate the validSubdivisions List using the JSON file
-          var subdivRequest = makeRequest({
-            method: 'GET',
-            url: subdivisionDetailsPath
-          })
-          dataRequests.push(subdivRequest);
-          var taxDataRequest = makeRequest({
-            method: 'GET',
-            url: taxDataPath
-          })
-          dataRequests.push(taxDataRequest);
-          // If we don't already have it, populate the taxModel using the JS file
-          if (!taxModels[thiscountryDetailsEntry.taxModel]) {
-            var taxModelRequest = makeRequest({
-              method: 'GET',
-              url: taxModelPath
-            })
-            dataRequests.push(taxModelRequest);
-          }
-
-          // Resolve when the above requests all finish
-          Promise.all([subdivRequest, taxDataRequest, taxModelRequest])
-          .then( function(datums) {
-            thiscountryDetailsEntry.hasBeenLoaded = true;
-
-            // Populate the subdivisionDetails and validSubdivisions array.
-            subdivisionDetails[inputCountry] = JSON.parse(datums[0]);
-
-            // Populate the country taxData.
-            thiscountryDetailsEntry.taxData = JSON.parse(datums[1]);
-
-            // Run the taxModel, which should be javascript code that modifies our
-            // finance engine ass necessary.
-            if (datums.length > 2) {
-              eval(datums[2]);
-            }
-
-            resolve();
-          })
-          .catch(function (err) {
-            console.error("Error could not load country json file: "+err.statusText);
-            reject(err);
-          })
-        } else {
-          resolve();
-        }
-      } else {
-
+      if (!validateCountry(inputCountry)) {
         var err = new InvalidInputError("Inputs failed validation", {country: true});
         reject(err);
       }
-    })
-    .then( function() {
-      validSubdivisions = Object.keys(subdivisionDetails[inputCountry]);
-      locale.country = inputCountry;
+
+      // If this country hasn't been selected yet, we still need to load its subdivisions
+      // from the json file.
+      // I dislike this nested promise approach: it works for now, but needs review.
+      if (!thiscountryDetailsEntry.hasBeenLoaded) {
+        subdivisionDetailsPath = thiscountryDetailsEntry.federalSubdivisionsFile;
+        var taxModelPath = thiscountryDetailsEntry.taxModelFile;
+        var taxDataPath = thiscountryDetailsEntry.taxDataFile;
+
+        var dataRequests = [];
+
+        // Populate the validSubdivisions List using the JSON file
+        var subdivRequest = makeRequest({
+          method: 'GET',
+          url: subdivisionDetailsPath
+        })
+        dataRequests.push(subdivRequest);
+        var taxDataRequest = makeRequest({
+          method: 'GET',
+          url: taxDataPath
+        })
+        dataRequests.push(taxDataRequest);
+
+        // Resolve when the above requests all finish
+        Promise.all([subdivRequest, taxDataRequest])
+        .then( function(datums) {
+          thiscountryDetailsEntry.hasBeenLoaded = true;
+
+          // Populate the subdivisionDetails and validSubdivisions array.
+          subdivisionDetails[inputCountry] = JSON.parse(datums[0]);
+          validSubdivisions = Object.keys(subdivisionDetails[inputCountry]);
+
+          // Populate the country taxData.
+          thiscountryDetailsEntry.taxData = JSON.parse(datums[1]);
+
+          locale.country = inputCountry;
+
+          // If the current subdivision isn't valid anymore then we need to
+          // default to the first one in the validSubdivisions.
+          if (!validateFederalSubdivision(locale.subdivision)) {
+            setFederalSubdivision(validSubdivisions[0])
+            resolve(setFederalSubdivision(validSubdivisions[0]));
+          } else {
+            resolve();
+          }
+        })
+        .catch(function (err) {
+          console.error("Error could not load country json file: "+err.statusText);
+          reject(err);
+        })
+      } else {
+        validSubdivisions = Object.keys(subdivisionDetails[inputCountry]);
+        locale.country = inputCountry;
+        resolve();
+      }
     })
   }
 
@@ -1254,7 +1192,7 @@
             // Populate the subdivision taxData.
             subdivisionDetailsEntry.taxData = JSON.parse(datums[0]);
 
-            // If the taxModel was alsonew, then evaluate t to have it configured.
+            // If the taxModel was also new, then evaluate t to have it configured.
             if (datums.length > 1) {
               eval(datums[1]);
             }
@@ -1428,13 +1366,16 @@
   }
 
   var taxModels = {
-    none: {
+    None: {
       calculateTaxTable: function() {
         return 0;
       },
       getTaxRate: function(financialObject) {
         return taxTable;
-      }
+      },
+      assetConstructor: Asset,
+      investmentConstructor: InvestmentAccount,
+      debtConstructor: DebtAccount,
     },
   };
 
@@ -1448,11 +1389,12 @@
 
   function applyTaxModel(modelName) {
     // Apply associated taxModel components to calculateTaxTable(), and getTaxRate();
+    // Also the constructors.
   }
 
   // A variable that stores a function for calculating taxation data tables for whatever
   // jurisdiction the user has selected.
-  var calculateTaxTable = taxModels["none"].calculateTaxTable;
+  var calculateTaxTable = taxModels["None"].calculateTaxTable;
 
   var taxData;
 
@@ -1461,7 +1403,11 @@
   var taxTable = calculateTaxTable();
 
   // A function that uses the current tax table to find the appropriate rate for the passed financial object
-  var getTaxRate = taxModels["none"].getTaxRate;
+  var getTaxRate = taxModels["None"].getTaxRate;
+
+  var AssetConstructor = taxModels["None"].assetConstructor;
+  var InvestmentConstructor = taxModels["None"].investmentConstructor;
+  var DebtConstructor = taxModels["None"].debtConstructor;
 
   // // //
   // Functions for operating on the account objects
@@ -1471,144 +1417,143 @@
 
     constructTimeline();
 
-    var promise = new Promise(
-      function (resolve, reject) {
+    return new Promise( function (resolve, reject) {
 
-        // reset all of the properties of the financialObjects
-        for (var assetID in assets) {
-          assets[assetID].value = 0;
-          assets[assetID].currentPeriodNetAccruals = 0;
-          assets[assetID].dataTable = [];
+      // reset all of the properties of the financialObjects
+      for (var assetID in assets) {
+        assets[assetID].value = 0;
+        assets[assetID].currentPeriodNetAccruals = 0;
+        assets[assetID].dataTable = [];
+      }
+
+      for (var investmentID in investmentAccounts) {
+        investmentAccounts[investmentID].value = 0;
+        investmentAccounts[investmentID].currentPeriodNetAccruals = 0;
+        investmentAccounts[investmentID].accrualBuffer = 0;
+        investmentAccounts[investmentID].dataTable = [];
+      }
+
+      for (var debtID in debtAccounts) {
+        debtAccounts[debtID].value = 0;
+        debtAccounts[debtID].currentPeriodNetAccruals = 0;
+        debtAccounts[debtID].accrualBuffer = 0;
+        debtAccounts[debtID].dataTable = [];
+      }
+
+      // Turn the properties of the timeline into an array of date strings
+      var dates = Object.keys(timeline);
+
+      // Sort the dates by comparing the getTime() values of their respective Date() objects.
+      dates.sort( function(a,b) {
+        return moment(a).isAfter(moment(b));
+      })
+
+      // For all dates in sorted order:
+      var keyDateCount = dates.length;
+      for (var i = 0; i < keyDateCount; i++) {
+
+        var thisDateString = dates[i];
+        var thisDate = moment.utc(dates[i]);
+        var lastDate;
+
+        if (i !== 0) {
+          lastDate = moment.utc(dates[i-1]);
+        } else {
+          lastDate = moment.utc(dates[i]);
         }
 
-        for (var investmentID in investmentAccounts) {
-          investmentAccounts[investmentID].value = 0;
-          investmentAccounts[investmentID].currentPeriodNetAccruals = 0;
-          investmentAccounts[investmentID].accrualBuffer = 0;
-          investmentAccounts[investmentID].dataTable = [];
-        }
+        var daysElapsed = thisDate.diff(lastDate, "days");
 
-        for (var debtID in debtAccounts) {
-          debtAccounts[debtID].value = 0;
-          debtAccounts[debtID].currentPeriodNetAccruals = 0;
-          debtAccounts[debtID].accrualBuffer = 0;
-          debtAccounts[debtID].dataTable = [];
-        }
-
-        // Turn the properties of the timeline into an array of date strings
-        var dates = Object.keys(timeline);
-
-        // Sort the dates by comparing the getTime() values of their respective Date() objects.
-        dates.sort( function(a,b) {
-          return moment(a).isAfter(moment(b));
-        })
-
-        // For all dates in sorted order:
-        var keyDateCount = dates.length;
-        for (var i = 0; i < keyDateCount; i++) {
-
-          var thisDateString = dates[i];
-          var thisDate = moment.utc(dates[i]);
-          var lastDate;
-
-          if (i !== 0) {
-            lastDate = moment.utc(dates[i-1]);
-          } else {
-            lastDate = moment.utc(dates[i]);
+        // Calculate accruals using standard daily compounding interest formula
+        // for each financial object we have in assets, investmentAccounts, debtAccounts:
+        // Daily interest is always assumed to be for a 365 day year. February 29th is a freebie.
+        if (thisDate.isSameOrBefore(modelParameters.timelineEndDate)) { // Only consider dates that are before our timelineEndDate
+          for (var assetID in assets) {
+            var accrualRate = assets[assetID].accrualRate;
+            var principal = assets[assetID].value;
+            var newValue = principal*Math.pow((1+(accrualRate/365)), daysElapsed);
+            var accrual = newValue - principal;
+            assets[assetID].currentPeriodNetAccruals = newValue;
+            assets[assetID].value += accrual; // assets don't get deposited interest, they implicitly appreciate or depreciate
           }
 
-          var daysElapsed = thisDate.diff(lastDate, "days");
-
-          // Calculate accruals using standard daily compounding interest formula
-          // for each financial object we have in assets, investmentAccounts, debtAccounts:
-          // Daily interest is always assumed to be for a 365 day year. February 29th is a freebie.
-          if (thisDate.isSameOrBefore(modelParameters.timelineEndDate)) { // Only consider dates that are before our timelineEndDate
-            for (var assetID in assets) {
-              var accrualRate = assets[assetID].accrualRate;
-              var principal = assets[assetID].value;
-              var newValue = principal*Math.pow((1+(accrualRate/365)), daysElapsed);
-              var accrual = newValue - principal;
-              assets[assetID].currentPeriodNetAccruals = newValue;
-              assets[assetID].value += accrual; // assets don't get deposited interest, they implicitly appreciate or depreciate
-            }
-
-            for (var investmentID in investmentAccounts) {
-              var accrualRate = investmentAccounts[investmentID].accrualRate;
-              var principal = investmentAccounts[investmentID].value + investmentAccounts[investmentID].accrualBuffer;
-              var newValue = principal*Math.pow((1+(accrualRate/365)), daysElapsed);
-              var accrual = newValue - principal;
-              investmentAccounts[investmentID].currentPeriodNetAccruals += accrual;
-              investmentAccounts[investmentID].accrualBuffer += accrual; // investments are reliant on the accrualTransfer to deposit interest.
-            }
-
-            for (var debtID in debtAccounts) {
-              var accrualRate = debtAccounts[debtID].accrualRate;
-              var principal = debtAccounts[debtID].value + debtAccounts[debtID].accrualBuffer;
-              var newValue = principal*Math.pow((1+(accrualRate/365)), daysElapsed);
-              var accrual = newValue - principal;
-              debtAccounts[debtID].currentPeriodNetAccruals += accrual;
-              debtAccounts[debtID].accrualBuffer += accrual; // debts are reliant on the accrualTransfer to deposit interest.
-            }
+          for (var investmentID in investmentAccounts) {
+            var accrualRate = investmentAccounts[investmentID].accrualRate;
+            var principal = investmentAccounts[investmentID].value + investmentAccounts[investmentID].accrualBuffer;
+            var newValue = principal*Math.pow((1+(accrualRate/365)), daysElapsed);
+            var accrual = newValue - principal;
+            investmentAccounts[investmentID].currentPeriodNetAccruals += accrual;
+            investmentAccounts[investmentID].accrualBuffer += accrual; // investments are reliant on the accrualTransfer to deposit interest.
           }
 
-          // Apply all of the scheduled transactions
-          var transferCount = timeline[thisDateString].transfers.length;
-          for (var j = 0; j < transferCount; j++) {
-            var thisToAccount = timeline[thisDateString].transfers[j].toAccount;
-            var thisFromAccount = timeline[thisDateString].transfers[j].fromAccount;
-            var thisTransferAmount = timeline[thisDateString].transfers[j].valueFunction();
-
-            // A debt shouldnt be overpaid:
-            // See if there isn't a better place than here to accomplish this?
-            if (thisToAccount.type === "Debt") {
-              var outstandingDebt = thisToAccount.value + thisToAccount.accrualBuffer;
-
-              // Check that the outstanding debt is below zero and if the size of the transfer exceeds the debt
-              if ((outstandingDebt <= 0) && (thisTransferAmount > -1*outstandingDebt)) {
-                // Set the transfer to the outstanding debt value.
-                thisTransferAmount = -1*outstandingDebt;
-              }
-            }
-
-            transfer(thisFromAccount, thisToAccount, thisTransferAmount);
-          }
-
-          // Push a row into the dataTable of each financal object if necessary
-          if (timeline[thisDateString].recordThisDate) {
-            for (var assetID in assets) {
-              var thisValue = assets[assetID].value;
-              var thisPeriodAccruals = assets[assetID].currentPeriodNetAccruals;
-              var thisYearAccruals = assets[assetID].currentYearNetAccruals;
-              assets[assetID].dataTable.push({date: thisDate, value: thisValue, periodAccruals: thisPeriodAccruals, yearAccruals: thisYearAccruals});
-
-              // zero out the current accruals
-              assets[assetID].currentPeriodNetAccruals = 0;
-            }
-
-            for (var investmentID in investmentAccounts) {
-              var thisValue = investmentAccounts[investmentID].value;
-              var thisPeriodAccruals = investmentAccounts[investmentID].currentPeriodNetAccruals;
-              var thisYearAccruals = investmentAccounts[investmentID].currentYearNetAccruals;
-              investmentAccounts[investmentID].dataTable.push({date: thisDate, value: thisValue, periodAccruals: thisPeriodAccruals, yearAccruals: thisYearAccruals});
-
-              // zero out the current accruals
-              investmentAccounts[investmentID].currentPeriodNetAccruals = 0;
-            }
-
-            for (var debtID in debtAccounts) {
-              var thisValue = debtAccounts[debtID].value;
-              var thisPeriodAccruals = debtAccounts[debtID].currentPeriodNetAccruals;
-              var thisYearAccruals = debtAccounts[debtID].currentYearNetAccruals;
-              debtAccounts[debtID].dataTable.push({date: thisDate, value: thisValue, periodAccruals: thisPeriodAccruals, yearAccruals: thisYearAccruals});
-
-              // zero out the current accruals
-              debtAccounts[debtID].currentPeriodNetAccruals = 0;
-            }
+          for (var debtID in debtAccounts) {
+            var accrualRate = debtAccounts[debtID].accrualRate;
+            var principal = debtAccounts[debtID].value + debtAccounts[debtID].accrualBuffer;
+            var newValue = principal*Math.pow((1+(accrualRate/365)), daysElapsed);
+            var accrual = newValue - principal;
+            debtAccounts[debtID].currentPeriodNetAccruals += accrual;
+            debtAccounts[debtID].accrualBuffer += accrual; // debts are reliant on the accrualTransfer to deposit interest.
           }
         }
 
-        resolve(true);
-      });
+        // Apply all of the scheduled transactions
+        var transferCount = timeline[thisDateString].transfers.length;
+        for (var j = 0; j < transferCount; j++) {
+          var thisToAccount = timeline[thisDateString].transfers[j].toAccount;
+          var thisFromAccount = timeline[thisDateString].transfers[j].fromAccount;
+          var thisTransferAmount = timeline[thisDateString].transfers[j].valueFunction();
+
+          // A debt shouldnt be overpaid:
+          // See if there isn't a better place than here to accomplish this?
+          if (thisToAccount.type === "Debt") {
+            var outstandingDebt = thisToAccount.value + thisToAccount.accrualBuffer;
+
+            // Check that the outstanding debt is below zero and if the size of the transfer exceeds the debt
+            if ((outstandingDebt <= 0) && (thisTransferAmount > -1*outstandingDebt)) {
+              // Set the transfer to the outstanding debt value.
+              thisTransferAmount = -1*outstandingDebt;
+            }
+          }
+
+          transfer(thisFromAccount, thisToAccount, thisTransferAmount);
+        }
+
+        // Push a row into the dataTable of each financal object if necessary
+        if (timeline[thisDateString].recordThisDate) {
+          for (var assetID in assets) {
+            var thisValue = assets[assetID].value;
+            var thisPeriodAccruals = assets[assetID].currentPeriodNetAccruals;
+            var thisYearAccruals = assets[assetID].currentYearNetAccruals;
+            assets[assetID].dataTable.push({date: thisDate, value: thisValue, periodAccruals: thisPeriodAccruals, yearAccruals: thisYearAccruals});
+
+            // zero out the current accruals
+            assets[assetID].currentPeriodNetAccruals = 0;
+          }
+
+          for (var investmentID in investmentAccounts) {
+            var thisValue = investmentAccounts[investmentID].value;
+            var thisPeriodAccruals = investmentAccounts[investmentID].currentPeriodNetAccruals;
+            var thisYearAccruals = investmentAccounts[investmentID].currentYearNetAccruals;
+            investmentAccounts[investmentID].dataTable.push({date: thisDate, value: thisValue, periodAccruals: thisPeriodAccruals, yearAccruals: thisYearAccruals});
+
+            // zero out the current accruals
+            investmentAccounts[investmentID].currentPeriodNetAccruals = 0;
+          }
+
+          for (var debtID in debtAccounts) {
+            var thisValue = debtAccounts[debtID].value;
+            var thisPeriodAccruals = debtAccounts[debtID].currentPeriodNetAccruals;
+            var thisYearAccruals = debtAccounts[debtID].currentYearNetAccruals;
+            debtAccounts[debtID].dataTable.push({date: thisDate, value: thisValue, periodAccruals: thisPeriodAccruals, yearAccruals: thisYearAccruals});
+
+            // zero out the current accruals
+            debtAccounts[debtID].currentPeriodNetAccruals = 0;
+          }
+        }
+      }
+
+      resolve(true);
+    });
   }
 
 
