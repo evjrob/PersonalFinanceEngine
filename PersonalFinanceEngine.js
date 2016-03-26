@@ -38,6 +38,7 @@
     spouseSalary: 0,          // Spousal direct salary, if one exists
     spouseDisability: false,  // Whether
     salaryGrowth: 0,          // Expected annual salary increases as a fraction (eh 5% = 0.05)
+    dateOfBirth: null,        // The date of birth is necessary for taxation and retirement considerations.
     retirementDate: null,     // Planned retirement date. Null = no retirement planned
     retirementIncome: 0.5,    // Percentage of working age salary to be drawn as retirement income
     netWorthSeries: [],       // A table to store personal net worth for charting purposes.
@@ -262,6 +263,24 @@
         input.endDate = moment.utc(input.endDate);
       } else {
         input.endDate = moment.invalid();
+      }
+    };
+
+    // dateOfBirth properties
+    if ('dateOfBirth' in input) {
+      if (moment.isDate(input.dateOfBirth) || moment.isMoment(input.dateOfBirth)) {
+        input.dateOfBirth = moment.utc(input.dateOfBirth);
+      } else {
+        input.dateOfBirth = moment.invalid();
+      }
+    };
+
+    // retirementDate properties
+    if ('retirementDate' in input) {
+      if (moment.isDate(input.retirementDate) || moment.isMoment(input.retirementDate)) {
+        input.retirementDate = moment.utc(input.retirementDate);
+      } else {
+        input.retirementDate = moment.invalid();
       }
     };
 
@@ -527,6 +546,25 @@
     })
   }
 
+  function setPersonalDetails(inputDetails) {
+
+    momentifyDates(inputDetails);
+
+    return new Promise( function (resolve, reject) {
+      if (validateDate(inputWrapper.date)) {
+
+        modelParameters.userHasSelectedEndDate = true;
+        modelParameters.userSelectedEndDate = inputWrapper.date;
+        modelParameters.timelineEndDate = modelParameters.userSelectedEndDate;
+
+        resolve();
+      } else {
+
+        var err = new InvalidInputError("Inputs failed validation", {date: true});
+        reject(err);
+      }
+    });
+  }
 
   // // //
   //  Constructors and functions for creating and managing the financial objects
