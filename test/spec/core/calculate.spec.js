@@ -390,8 +390,27 @@ describe("Calculate functions", function() {
       expect(PersonalFinanceEngine.getTaxModel).not.toBeDefined();
     });
 
-    it("should determine the correct taxModel based on the user's locale when we call getTaxModel", function() {
-      expect(PersonalFinanceEngine.getTaxModel()).toEqual("canada");
+    it("should determine the correct taxModel based on the user's locale when we call getTaxModel", function(done) {
+      expect(PersonalFinanceEngine.__test__.getTaxModel()).toEqual("None");
+
+      PersonalFinanceEngine.setCountry("Canada")
+        .then(function() {
+          expect(PersonalFinanceEngine.__test__.getTaxModel()).toEqual("Canada");
+
+          return PersonalFinanceEngine.setCountry("None");
+        })
+        .then(function() {
+          expect(PersonalFinanceEngine.__test__.getTaxModel()).toEqual("None");
+
+          done();
+        })
+        .catch( function(err) {
+          if (err.name !== "InvalidInputError") {
+            throw err;
+          };
+          expect(err).toEqual(null);
+          done();
+        })
     });
 
     it("should load the correct taxModel when we call applyTaxModel", function() {

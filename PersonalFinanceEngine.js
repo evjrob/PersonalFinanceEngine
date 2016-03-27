@@ -474,7 +474,6 @@
           // If the current subdivision isn't valid anymore then we need to
           // default to the first one in the validSubdivisions.
           if (!validateFederalSubdivision(locale.subdivision)) {
-            setFederalSubdivision(validSubdivisions[0])
             resolve(setFederalSubdivision(validSubdivisions[0]));
           } else {
             resolve();
@@ -487,7 +486,14 @@
       } else {
         validSubdivisions = Object.keys(subdivisionDetails[inputCountry]);
         locale.country = inputCountry;
-        resolve();
+
+        // If the current subdivision isn't valid anymore then we need to
+        // default to the first one in the validSubdivisions.
+        if (!validateFederalSubdivision(locale.subdivision)) {
+          resolve(setFederalSubdivision(validSubdivisions[0]));
+        } else {
+          resolve();
+        }
       }
     })
   }
@@ -1522,10 +1528,9 @@
 
   function getTaxModel() {
     // Using the user's locale information determine the appropriate
-    // tax model, and fetch the associated .json ans .js files if necessary
-    // then put them into the taxModels object.
+    // tax model property name.
 
-
+    return subdivisionDetails[locale.country][locale.subdivision].taxModel;
   }
 
   function applyTaxModel(modelName) {
