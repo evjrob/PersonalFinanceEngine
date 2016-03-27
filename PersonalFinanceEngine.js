@@ -32,8 +32,8 @@
 
   // An object to store user information independednt of their location or the model parameters.
   var personalDetails = {
-    familyStatus: "single",   // Relationship status
-    dependentList: [],        // A list of dependents (children, infirm relatives, etc.)
+    familyStatus: "Single",   // Relationship status
+    dependantList: [],        // A list of dependants (children, infirm relatives, etc.)
     salary: 0,                // Direct income from an external source
     spouseSalary: 0,          // Spousal direct salary, if one exists
     spouseDisability: false,  // Whether
@@ -41,7 +41,6 @@
     dateOfBirth: null,        // The date of birth is necessary for taxation and retirement considerations.
     retirementDate: null,     // Planned retirement date. Null = no retirement planned
     retirementIncome: 0.5,    // Percentage of working age salary to be drawn as retirement income
-    netWorthSeries: [],       // A table to store personal net worth for charting purposes.
   };
 
   // The user's primary account. Largely serves as a place for salary or other income to be deposited
@@ -283,6 +282,16 @@
         input.retirementDate = moment.invalid();
       }
     };
+
+    if ("dependantList" in input) {
+      input.dependantList.forEach(function(dependant) {
+        if (moment.isDate(dependant.dateOfBirth) || moment.isMoment(dependant.dateOfBirth)) {
+          dependant.dateOfBirth = moment.utc(dependant.dateOfBirth);
+        } else {
+          dependant.dateOfBirth = moment.invalid();
+        }
+      });
+    }
 
     return input;
   }
@@ -551,16 +560,29 @@
     momentifyDates(inputDetails);
 
     return new Promise( function (resolve, reject) {
-      if (validateDate(inputWrapper.date)) {
 
-        modelParameters.userHasSelectedEndDate = true;
-        modelParameters.userSelectedEndDate = inputWrapper.date;
-        modelParameters.timelineEndDate = modelParameters.userSelectedEndDate;
+      var validationPassed = true;
+      var failedInputs = {
+        familyStatus: false,
+        dependantList: [],
+        salary: false,
+        spouseSalary: false,
+        salaryGrowth: false,
+        dateOfBirth: false,
+        retirementDate: false,
+        retirementIncome: false,
+      };
+
+      validationPassed = validatePersonalDetails(inputDetails, failedInputs);
+
+      if (validationPassed) {
+
+        PersonalFinanceEngine.personalDetails = inputDetails;
 
         resolve();
       } else {
 
-        var err = new InvalidInputError("Inputs failed validation", {date: true});
+        var err = new InvalidInputError("Inputs failed validation", failedInputs);
         reject(err);
       }
     });
@@ -1776,6 +1798,73 @@
     return validationPassed;
   }
 
+  function validatePersonalDetails(inputObject, failedInputs) {
+
+    var validationPassed = true;
+
+    if (!validateFamilyStatus(inputObject.familyStatus)) {
+      validationPassed = false;
+      failedInputs.familyStatus = true;
+    };
+
+    var dependantInputResult = [];
+    if (inputObject.dependantList) {
+
+      var dependantCount = inputObject.dependantList.length;
+
+      for (var i = 0; i < dependantCount; i++) {
+        if (validateDependant(inputObject.dependantList[i])) {
+          dependantInputResult.push(false);
+        } else {
+          dependantInputResult.push(true);
+          validationPassed = false;
+        }
+      }
+    }
+    failedInputs.dependantList = dependantInputResult;
+
+    if (!validateNumber(inputObject.salary)) {
+      validationPassed = false;
+      failedInputs.salary = true;
+    };
+
+    if (!validateNumber(inputObject.spouseSalary)) {
+      validationPassed = false;
+      failedInputs.spouseSalary = true;
+    }
+
+    if(!validateBoolean(inputObject.spouseDisability)) {
+      validationPassed = false;
+      failedInputs.spouseDisability = true;
+    }
+
+    if (!validateNumber(inputObject.salaryGrowth)) {
+      validationPassed = false;
+      failedInputs.salaryGrowth = true;
+    };
+
+    if (inputObject.dateOfBirth !== null) {
+      if (!validateDate(inputObject.dateOfBirth)) {
+        validationPassed = false;
+        failedInputs.dateOfBirth = true;
+      }
+    }
+
+    if (inputObject.retirementDate !== null) {
+      if (!validateDate(inputObject.retirementDate)) {
+        validationPassed = false;
+        failedInputs.retirementDate = true;
+      }
+    }
+
+    if (!validateNumber(inputObject.retirementIncome)) {
+      validationPassed = false;
+      failedInputs.retirementIncome = true;
+    };
+
+    return validationPassed;
+  }
+
   function validateName(inputName) {
     return (typeof inputName === "string");
   }
@@ -1843,6 +1932,39 @@
     return false;
   }
 
+  function validateFamilyStatus(inputFamilyStatus) {
+    return (validFamilyStatuses.indexOf(inputFamilyStatus) !== -1);
+  }
+
+  function validateDependant(inputDependant) {
+    var validationPassed = true;
+
+    if (!validateName(inputDependant.name)) {
+      validationPassed = false;
+    }
+
+    if (!validateDate(inputDependant.dateOfBirth)) {
+      validationPassed = false;
+    }
+
+    if (!validateBoolean(inputDependant.disability)) {
+      validationPassed = false;
+    }
+
+    if (!validateNumber(inputDependant.income)) {
+      validationPassed = false;
+    }
+
+    return validationPassed;
+  }
+
+  function validateNumber(inputNumber) {
+    return (typeof inputNumber === "number");  }
+
+  function validateBoolean(inputBoolean) {
+    return (typeof inputBoolean === "boolean");
+  }
+
   // Return the public objects and functions.
   PersonalFinanceEngine.modelParameters = modelParameters;
   PersonalFinanceEngine.setUserSelectedEndDate = setUserSelectedEndDate;
@@ -1852,6 +1974,7 @@
   PersonalFinanceEngine.setCountry = setCountry;
   PersonalFinanceEngine.setFederalSubdivision = setFederalSubdivision;
   PersonalFinanceEngine.personalDetails = personalDetails;
+  PersonalFinanceEngine.setPersonalDetails = setPersonalDetails;
   PersonalFinanceEngine.chequingAccount = chequingAccount;
   PersonalFinanceEngine.assets = assets;
   PersonalFinanceEngine.investmentAccounts = investmentAccounts;

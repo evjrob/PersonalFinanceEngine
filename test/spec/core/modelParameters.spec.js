@@ -438,12 +438,106 @@ describe("Model parameters and other core settings or functions", function() {
       expect(PersonalFinanceEngine.setPersonalDetails).toEqual(jasmine.any(Function));
     });
 
-    it("should allow us to change the personalDetails using setPersonalDetails with valid input.", function() {
-      expect(true).toEqual(false);
+    it("should allow us to change the personalDetails using setPersonalDetails with valid input.", function(done) {
+
+      var newPersonalDetails = {
+        familyStatus: "Married",
+        dependantList: [
+          {
+            name: "child",
+            dateOfBirth: new Date("2016-01-01"),
+            disability: false,
+            income: 0
+          }
+        ],
+        salary: 100000,
+        spouseSalary: 0,
+        spouseDisability: false,
+        salaryGrowth: 0.05,
+        dateOfBirth: new Date("1990-05-20"),
+        retirementDate: new Date("2055-05-20"),
+        retirementIncome: 0.5
+      };
+
+      PersonalFinanceEngine.setPersonalDetails(newPersonalDetails)
+        .then( function() {
+          expect(PersonalFinanceEngine.personalDetails.familyStatus).toEqual(newPersonalDetails.familyStatus);
+          expect(PersonalFinanceEngine.personalDetails.dependantList[0]).toEqual(newPersonalDetails.dependantList[0]);
+          expect(PersonalFinanceEngine.personalDetails.salary).toEqual(newPersonalDetails.salary);
+          expect(PersonalFinanceEngine.personalDetails.spouseSalary).toEqual(newPersonalDetails.spouseSalary);
+          expect(PersonalFinanceEngine.personalDetails.spouseDisability).toEqual(newPersonalDetails.spouseDisability);
+          expect(PersonalFinanceEngine.personalDetails.salaryGrowth).toEqual(newPersonalDetails.salaryGrowth);
+          expect(PersonalFinanceEngine.personalDetails.dateOfBirth).toEqual(newPersonalDetails.dateOfBirth);
+          expect(PersonalFinanceEngine.personalDetails.retirementDate).toEqual(newPersonalDetails.retirementDate);
+          expect(PersonalFinanceEngine.personalDetails.retirementIncome).toEqual(newPersonalDetails.retirementIncome);
+
+          done();
+        })
+        .catch( function(err) {
+          if (err.name !== "InvalidInputError") {
+            throw err;
+          };
+          expect(err).toEqual(null);
+          console.log(err.failedInputs);
+          console.log(err.failedInputs.dependantList);
+          done();
+        });
     });
 
-    it("should reject with an InvalidInputError when setPersonalDetails is given bad input.", function() {
-      expect(true).toEqual(false);
+    it("should reject with an InvalidInputError when setPersonalDetails is given bad input.", function(done) {
+
+      var badPersonalDetails = {
+        familyStatus: "no",
+        dependantList: [
+          {
+            name: "no",
+            dateOfBirth: "no",
+            disability: "no",
+            income: "no"
+          }
+        ],
+        salary: "no",
+        spouseSalary: "no",
+        spouseDisability: "no",
+        salaryGrowth: "no",
+        dateOfBirth: "no",
+        retirementDate: "no",
+        retirementIncome: "no"
+      };
+
+      PersonalFinanceEngine.setPersonalDetails(badPersonalDetails)
+        .then( function() {
+
+          expect(PersonalFinanceEngine.personalDetails.familyStatus).not.toEqual(badPersonalDetails.familyStatus);
+          expect(PersonalFinanceEngine.personalDetails.dependantList[0]).not.toEqual(badPersonalDetails.dependantList[0]);
+          expect(PersonalFinanceEngine.personalDetails.salary).not.toEqual(badPersonalDetails.salary);
+          expect(PersonalFinanceEngine.personalDetails.spouseSalary).not.toEqual(badPersonalDetails.spouseSalary);
+          expect(PersonalFinanceEngine.personalDetails.spouseDisability).not.toEqual(badPersonalDetails.spouseDisability);
+          expect(PersonalFinanceEngine.personalDetails.salaryGrowth).not.toEqual(badPersonalDetails.salaryGrowth);
+          expect(PersonalFinanceEngine.personalDetails.dateOfBirth).not.toEqual(badPersonalDetails.dateOfBirth);
+          expect(PersonalFinanceEngine.personalDetails.retirementDate).not.toEqual(badPersonalDetails.retirementDate);
+          expect(PersonalFinanceEngine.personalDetails.retirementIncome).not.toEqual(badPersonalDetails.retirementIncome);
+
+          done();
+        })
+        .catch( function(err) {
+          if (err.name !== "InvalidInputError") {
+            throw err;
+          };
+          expect(err).not.toEqual(null);
+
+          expect(err.failedInputs.familyStatus).toEqual(true);
+          expect(err.failedInputs.dependantList[0]).toEqual(true);
+          expect(err.failedInputs.salary).toEqual(true);
+          expect(err.failedInputs.spouseSalary).toEqual(true);
+          expect(err.failedInputs.spouseDisability).toEqual(true);
+          expect(err.failedInputs.salaryGrowth).toEqual(true);
+          expect(err.failedInputs.dateOfBirth).toEqual(true);
+          expect(err.failedInputs.retirementDate).toEqual(true);
+          expect(err.failedInputs.retirementIncome).toEqual(true);
+
+          done();
+        });
     });
   })
 
