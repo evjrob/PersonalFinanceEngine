@@ -558,6 +558,7 @@
     })
     .then( function() {
       locale.subdivision = inputSubdivision;
+      applyTaxModel(subdivisionDetails[locale.country][locale.subdivision].taxModel); // Change the tax model
     })
   }
 
@@ -1536,6 +1537,12 @@
   function applyTaxModel(modelName) {
     // Apply associated taxModel components to calculateTaxTable(), and getTaxRate();
     // Also the constructors.
+
+    calculateTaxTable = taxModels[modelName].calculateTaxTable;
+    getTaxRate = taxModels[modelName].getTaxRate;
+    AssetConstructor = taxModels[modelName].assetConstructor;
+    InvestmentConstructor = taxModels[modelName].investmentConstructor;
+    DebtConstructor = taxModels[modelName].debtConstructor;
   }
 
   function calculate() {
@@ -2025,6 +2032,11 @@
   __test__.getTaxModel = getTaxModel;
   __test__.applyTaxModel = applyTaxModel;
   __test__.calculateTaxTable = calculateTaxTable;
+  __test__.taxData = taxData
+  __test__.getTaxRate = getTaxRate;
+  __test__.AssetConstructor = AssetConstructor;
+  __test__.InvestmentConstructor = InvestmentConstructor;
+  __test__.DebtConstructor = DebtConstructor;
   __test__.findMinDate = findMinDate;
   __test__.findMaxDate =findMaxDate;
   __test__.generateUUID = generateUUID;

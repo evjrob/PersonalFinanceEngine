@@ -413,11 +413,68 @@ describe("Calculate functions", function() {
         })
     });
 
-    it("should load the correct taxModel when we call applyTaxModel", function() {
-      expect(true).toEqual(false);
+    it("should have a private applyTaxModel method on the __test__ scope", function() {
+      expect(PersonalFinanceEngine.__test__.applyTaxModel).toBeDefined();
+      expect(PersonalFinanceEngine.applyTaxModel).not.toBeDefined();
     });
 
-    it("should load and parse the correct json tax data into taxData based on the user's selected locale.", function() {
+    it("should load the correct taxModel components when we call applyTaxModel", function() {
+      expect(PersonalFinanceEngine.__test__.getTaxModel()).toEqual("None");
+
+      // Make sure
+      PersonalFinanceEngine.setCountry("Canada")
+        .then(function() {
+          expect(PersonalFinanceEngine.__test__.getTaxModel()).toEqual("Canada");
+
+          PersonalFinanceEngine.__test__.applyTaxModel("Canada");
+
+          expect(PersonalFinanceEngine.__test__.calculateTaxTable).toEqual(jasmine.any(Function));
+          expect(PersonalFinanceEngine.__test__.calculateTaxTable).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].calculateTaxTable);
+
+          expect(PersonalFinanceEngine.__test__.getTaxRate).toEqual(jasmine.any(Function));
+          expect(PersonalFinanceEngine.__test__.getTaxRate).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].getTaxRate);
+
+          expect(PersonalFinanceEngine.__test__.AssetConstructor).toEqual(jasmine.any(Function));
+          expect(PersonalFinanceEngine.__test__.AssetConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].AssetConstructor);
+
+          expect(PersonalFinanceEngine.__test__.InvestmentConstructor).toEqual(jasmine.any(Function));
+          expect(PersonalFinanceEngine.__test__.InvestmentConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].InvestmentConstructor);
+
+          expect(PersonalFinanceEngine.__test__.DebtConstructor).toEqual(jasmine.any(Function));
+          expect(PersonalFinanceEngine.__test__.DebtConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].DebtConstructor);
+
+          return PersonalFinanceEngine.setCountry("None");
+        })
+        .then(function() {
+          expect(PersonalFinanceEngine.__test__.getTaxModel()).toEqual("None");
+
+          expect(PersonalFinanceEngine.__test__.calculateTaxTable).toEqual(jasmine.any(Function));
+          expect(PersonalFinanceEngine.__test__.calculateTaxTable).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].calculateTaxTable);
+
+          expect(PersonalFinanceEngine.__test__.getTaxRate).toEqual(jasmine.any(Function));
+          expect(PersonalFinanceEngine.__test__.getTaxRate).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].getTaxRate);
+
+          expect(PersonalFinanceEngine.__test__.AssetConstructor).toEqual(jasmine.any(Function));
+          expect(PersonalFinanceEngine.__test__.AssetConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].AssetConstructor);
+
+          expect(PersonalFinanceEngine.__test__.InvestmentConstructor).toEqual(jasmine.any(Function));
+          expect(PersonalFinanceEngine.__test__.InvestmentConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].InvestmentConstructor);
+
+          expect(PersonalFinanceEngine.__test__.DebtConstructor).toEqual(jasmine.any(Function));
+          expect(PersonalFinanceEngine.__test__.DebtConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].DebtConstructor);
+
+          done();
+        })
+        .catch( function(err) {
+          if (err.name !== "InvalidInputError") {
+            throw err;
+          };
+          expect(err).toEqual(null);
+          done();
+        })
+    });
+
+    it("should have loaded and parsed the correct json tax data into taxData based on the user's selected locale.", function() {
       expect(true).toEqual(false);
     });
 
