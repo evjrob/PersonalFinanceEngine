@@ -88,7 +88,7 @@
   var calculateTaxTable = taxModels["None"].calculateTaxTable;
 
   // A place to store the taxData for the currently selected locale.
-  var taxData;
+  var taxData = {};
 
   // An object map to store the tax data for the different types of financial objects and income
   // the user might possess or earn.
@@ -1543,6 +1543,19 @@
     AssetConstructor = taxModels[modelName].assetConstructor;
     InvestmentConstructor = taxModels[modelName].investmentConstructor;
     DebtConstructor = taxModels[modelName].debtConstructor;
+
+    // Need to manually set the PersonalFinanceEngine.__test__ parameters too since their
+    // references apparently stick to the original underlying "None" taxModel even after the
+    // calculateTaxTable variable is set to another taxModel like "Canada".
+    // I'm not satisfied with this solution to pass unit tests, but it hackishly achieves my goal in the short term.
+    PersonalFinanceEngine.__test__.calculateTaxTable = taxModels[modelName].calculateTaxTable;
+    PersonalFinanceEngine.__test__.getTaxRate = taxModels[modelName].getTaxRate;
+    PersonalFinanceEngine.__test__.AssetConstructor = taxModels[modelName].assetConstructor;
+    PersonalFinanceEngine.__test__.InvestmentConstructor = taxModels[modelName].investmentConstructor;
+    PersonalFinanceEngine.__test__.DebtConstructor = taxModels[modelName].debtConstructor;
+
+    taxData.country = countryDetails[locale.country].taxData;
+    taxData.subdivision = subdivisionDetails[locale.country][locale.subdivision].taxData;
   }
 
   function calculate() {
@@ -2032,7 +2045,7 @@
   __test__.getTaxModel = getTaxModel;
   __test__.applyTaxModel = applyTaxModel;
   __test__.calculateTaxTable = calculateTaxTable;
-  __test__.taxData = taxData
+  __test__.taxData = taxData;
   __test__.getTaxRate = getTaxRate;
   __test__.AssetConstructor = AssetConstructor;
   __test__.InvestmentConstructor = InvestmentConstructor;

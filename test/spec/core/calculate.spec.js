@@ -418,15 +418,12 @@ describe("Calculate functions", function() {
       expect(PersonalFinanceEngine.applyTaxModel).not.toBeDefined();
     });
 
-    it("should load the correct taxModel components when we call applyTaxModel", function() {
+    it("should load the correct taxModel components when we call applyTaxModel", function(done) {
       expect(PersonalFinanceEngine.__test__.getTaxModel()).toEqual("None");
 
-      // Make sure
       PersonalFinanceEngine.setCountry("Canada")
         .then(function() {
           expect(PersonalFinanceEngine.__test__.getTaxModel()).toEqual("Canada");
-
-          PersonalFinanceEngine.__test__.applyTaxModel("Canada");
 
           expect(PersonalFinanceEngine.__test__.calculateTaxTable).toEqual(jasmine.any(Function));
           expect(PersonalFinanceEngine.__test__.calculateTaxTable).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].calculateTaxTable);
@@ -435,13 +432,13 @@ describe("Calculate functions", function() {
           expect(PersonalFinanceEngine.__test__.getTaxRate).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].getTaxRate);
 
           expect(PersonalFinanceEngine.__test__.AssetConstructor).toEqual(jasmine.any(Function));
-          expect(PersonalFinanceEngine.__test__.AssetConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].AssetConstructor);
+          expect(PersonalFinanceEngine.__test__.AssetConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].assetConstructor);
 
           expect(PersonalFinanceEngine.__test__.InvestmentConstructor).toEqual(jasmine.any(Function));
-          expect(PersonalFinanceEngine.__test__.InvestmentConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].InvestmentConstructor);
+          expect(PersonalFinanceEngine.__test__.InvestmentConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].investmentConstructor);
 
           expect(PersonalFinanceEngine.__test__.DebtConstructor).toEqual(jasmine.any(Function));
-          expect(PersonalFinanceEngine.__test__.DebtConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].DebtConstructor);
+          expect(PersonalFinanceEngine.__test__.DebtConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].debtConstructor);
 
           return PersonalFinanceEngine.setCountry("None");
         })
@@ -455,13 +452,13 @@ describe("Calculate functions", function() {
           expect(PersonalFinanceEngine.__test__.getTaxRate).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].getTaxRate);
 
           expect(PersonalFinanceEngine.__test__.AssetConstructor).toEqual(jasmine.any(Function));
-          expect(PersonalFinanceEngine.__test__.AssetConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].AssetConstructor);
+          expect(PersonalFinanceEngine.__test__.AssetConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].assetConstructor);
 
           expect(PersonalFinanceEngine.__test__.InvestmentConstructor).toEqual(jasmine.any(Function));
-          expect(PersonalFinanceEngine.__test__.InvestmentConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].InvestmentConstructor);
+          expect(PersonalFinanceEngine.__test__.InvestmentConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].investmentConstructor);
 
           expect(PersonalFinanceEngine.__test__.DebtConstructor).toEqual(jasmine.any(Function));
-          expect(PersonalFinanceEngine.__test__.DebtConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].DebtConstructor);
+          expect(PersonalFinanceEngine.__test__.DebtConstructor).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].debtConstructor);
 
           done();
         })
@@ -474,8 +471,30 @@ describe("Calculate functions", function() {
         })
     });
 
-    it("should have loaded and parsed the correct json tax data into taxData based on the user's selected locale.", function() {
-      expect(true).toEqual(false);
+    it("should have loaded and parsed the correct json tax data into taxData based on the user's selected locale.", function(done) {
+
+      PersonalFinanceEngine.setCountry("Canada")
+        .then(function() {
+
+          expect(PersonalFinanceEngine.__test__.taxData.country).toEqual(PersonalFinanceEngine.__test__.countryDetails["Canada"].taxData);
+          expect(PersonalFinanceEngine.__test__.taxData.subdivision).toEqual(PersonalFinanceEngine.__test__.subdivisionDetails["Canada"]["Alberta"].taxData);
+
+          return PersonalFinanceEngine.setCountry("None");
+        })
+        .then(function() {
+
+          expect(PersonalFinanceEngine.__test__.taxData.country).toEqual(PersonalFinanceEngine.__test__.countryDetails["None"].taxData);
+          expect(PersonalFinanceEngine.__test__.taxData.subdivision).toEqual(PersonalFinanceEngine.__test__.subdivisionDetails["None"]["None"].taxData);
+
+          done();
+        })
+        .catch( function(err) {
+          if (err.name !== "InvalidInputError") {
+            throw err;
+          };
+          expect(err).toEqual(null);
+          done();
+        })
     });
 
     it("should populate taxTable when we call calculateTaxTable", function() {
