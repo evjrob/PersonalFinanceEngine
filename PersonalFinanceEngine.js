@@ -1590,7 +1590,7 @@
 
       // Sort the dates by comparing the getTime() values of their respective Date() objects.
       dates.sort( function(a,b) {
-        return moment(a).isAfter(moment(b));
+        return moment(a).diff(moment(b));
       })
 
       // For all dates in sorted order:
