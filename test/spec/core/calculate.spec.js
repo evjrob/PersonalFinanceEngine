@@ -497,8 +497,16 @@ describe("Calculate functions", function() {
         })
     });
 
-    it("should populate taxTable when we call calculateTaxTable", function() {
-      expect(true).toEqual(false);
+    it("should populate the taxTable with 0 when we call calculateTaxTable()", function() {
+      PersonalFinanceEngine.__test__.calculateTaxTable();
+
+      expect(PersonalFinanceEngine.__test__.taxTable).toEqual(0);
+    });
+
+    it("should return the expected tax rate of 0 when we call getTaxRate()", function() {
+      PersonalFinanceEngine.__test__.calculateTaxTable();
+
+      expect(PersonalFinanceEngine.__test__.getTaxRate()).toEqual(0);
     });
   })
 });

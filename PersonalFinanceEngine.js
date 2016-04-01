@@ -2046,6 +2046,7 @@
   __test__.applyTaxModel = applyTaxModel;
   __test__.calculateTaxTable = calculateTaxTable;
   __test__.taxData = taxData;
+  __test__.taxTable = taxTable;
   __test__.getTaxRate = getTaxRate;
   __test__.AssetConstructor = AssetConstructor;
   __test__.InvestmentConstructor = InvestmentConstructor;
