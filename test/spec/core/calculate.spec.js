@@ -500,15 +500,5 @@ describe("Calculate functions", function() {
     it("should populate taxTable when we call calculateTaxTable", function() {
       expect(true).toEqual(false);
     });
-
-    it("should have a private calculateTaxes method on the __test__ scope", function() {
-      expect(PersonalFinanceEngine.__test__.calculateTaxes).toBeDefined();
-      expect(PersonalFinanceEngine.calculateTaxes).not.toBeDefined();
-    });
-
-    it("should reassign the constructors for assets, investments and debts appropritely", function() {
-      expect(true).toEqual(false);
-    });
-
   })
 });
