@@ -211,6 +211,7 @@ describe("Calculate functions", function() {
           expect(PersonalFinanceEngine.assets[assetID].dataTable[0]["value"]).toBeCloseTo(1000,8);
           expect(PersonalFinanceEngine.assets[assetID].dataTable[1]["value"]).toBeCloseTo(1000*Math.pow((1+(0.1/365)), 364), 8);
           expect(PersonalFinanceEngine.assets[assetID].dataTable[recordedDataPointsCount-1]["value"]).toBeCloseTo(1000*Math.pow((1+(0.1/365)),1830), 8); // normal compoound interest formula.
+          expect(PersonalFinanceEngine.assets[assetID].dataTable[recordedDataPointsCount-1]["yearAccruals"]).toBeCloseTo(1000*Math.pow((1+(0.1/365)),1830)-1000, 8); // normal compoound interest formula.
 
           return PersonalFinanceEngine.deleteAsset(assetID);
         })
@@ -261,6 +262,7 @@ describe("Calculate functions", function() {
           yearLastTransferDate = moment(firstDate).add(yearLastTransferMonths, "months");
           daysElapsed = yearLastTransferDate.diff(PersonalFinanceEngine.investmentAccounts[investmentID].startDate, "days");
           expect(PersonalFinanceEngine.investmentAccounts[investmentID].dataTable[recordedDataPointsCount-1]["value"]).toBeCloseTo(1000*Math.pow((1+(0.1/365)),daysElapsed), 8); // normal compoound interest formula.
+          expect(PersonalFinanceEngine.investmentAccounts[investmentID].dataTable[recordedDataPointsCount-1]["yearAccruals"]).toBeCloseTo(1000*Math.pow((1+(0.1/365)),daysElapsed) - 1000, 8); // normal compoound interest formula.
 
           return PersonalFinanceEngine.deleteInvestment(investmentID);
         })
@@ -311,6 +313,7 @@ describe("Calculate functions", function() {
           yearLastTransferDate = moment(firstDate).add(yearLastTransferMonths, "months");
           daysElapsed = yearLastTransferDate.diff(PersonalFinanceEngine.debtAccounts[debtID].startDate, "days");
           expect(PersonalFinanceEngine.debtAccounts[debtID].dataTable[recordedDataPointsCount-1]["value"]).toBeCloseTo(-1000*Math.pow((1+(0.1/365)),daysElapsed), 8); // normal compoound interest formula.
+          expect(PersonalFinanceEngine.debtAccounts[debtID].dataTable[recordedDataPointsCount-1]["yearAccruals"]).toBeCloseTo(-1000*Math.pow((1+(0.1/365)),daysElapsed)+1000, 8); // normal compoound interest formula.
 
           return PersonalFinanceEngine.deleteDebt(debtID);
         })
@@ -425,6 +428,16 @@ describe("Calculate functions", function() {
         .then(function() {
           expect(PersonalFinanceEngine.__test__.getTaxModel()).toEqual("Canada");
 
+          expect(PersonalFinanceEngine.__test__.taxDay).toEqual(jasmine.any(Number));
+          expect(PersonalFinanceEngine.__test__.taxDay).toBeGreaterThan(0);
+          expect(PersonalFinanceEngine.__test__.taxDay).toBeLessThan(32);
+          expect(PersonalFinanceEngine.__test__.taxDay).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].taxDay);
+
+          expect(PersonalFinanceEngine.__test__.taxMonth).toEqual(jasmine.any(Number));
+          expect(PersonalFinanceEngine.__test__.taxMonth).toBeGreaterThan(0);
+          expect(PersonalFinanceEngine.__test__.taxMonth).toBeLessThan(13);
+          expect(PersonalFinanceEngine.__test__.taxMonth).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].taxMonth);
+
           expect(PersonalFinanceEngine.__test__.calculateTaxTable).toEqual(jasmine.any(Function));
           expect(PersonalFinanceEngine.__test__.calculateTaxTable).toEqual(PersonalFinanceEngine.__test__.taxModels["Canada"].calculateTaxTable);
 
@@ -444,6 +457,16 @@ describe("Calculate functions", function() {
         })
         .then(function() {
           expect(PersonalFinanceEngine.__test__.getTaxModel()).toEqual("None");
+
+          expect(PersonalFinanceEngine.__test__.taxDay).toEqual(jasmine.any(Number));
+          expect(PersonalFinanceEngine.__test__.taxDay).toBeGreaterThan(0);
+          expect(PersonalFinanceEngine.__test__.taxDay).toBeLessThan(32);
+          expect(PersonalFinanceEngine.__test__.taxDay).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].taxDay);
+
+          expect(PersonalFinanceEngine.__test__.taxMonth).toEqual(jasmine.any(Number));
+          expect(PersonalFinanceEngine.__test__.taxMonth).toBeGreaterThan(0);
+          expect(PersonalFinanceEngine.__test__.taxMonth).toBeLessThan(13);
+          expect(PersonalFinanceEngine.__test__.taxMonth).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].taxMonth);
 
           expect(PersonalFinanceEngine.__test__.calculateTaxTable).toEqual(jasmine.any(Function));
           expect(PersonalFinanceEngine.__test__.calculateTaxTable).toEqual(PersonalFinanceEngine.__test__.taxModels["None"].calculateTaxTable);

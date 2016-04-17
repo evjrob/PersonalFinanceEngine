@@ -60,6 +60,7 @@ describe("Model parameters and other core settings or functions", function() {
           done();
         })
         .catch( function(err) {
+          console.log(err.failedInputs);
           if (err.name !== "InvalidInputError") {
             throw err;
           };

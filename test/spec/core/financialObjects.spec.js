@@ -2022,6 +2022,7 @@ describe("FinancialObject public methods and constructors", function() {
       expect(testChequingAccount.initialValue).toEqual(1000);
       expect(testChequingAccount.value).toEqual(1000);
       expect(testChequingAccount.yearsTransfers).toEqual(0);
+      expect(testChequingAccount.currentYearTaxableAmount).toEqual(0);
     });
 
   });
@@ -2056,6 +2057,7 @@ describe("FinancialObject public methods and constructors", function() {
       expect(testInvestmentAccount.type).toEqual("Investment");
       expect(testInvestmentAccount.subType).toEqual("");
       expect(testInvestmentAccount.accrualPaymentFrequency).toEqual("Monthly");
+      expect(testInvestmentAccount.currentYearTaxableAmount).toEqual(0);
     });
 
   });

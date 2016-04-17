@@ -36,8 +36,8 @@
     dependantList: [],        // A list of dependants (children, infirm relatives, etc.)
     salary: 0,                // Direct income from an external source
     spouseSalary: 0,          // Spousal direct salary, if one exists
-    spouseDisability: false,  // Whether
-    salaryGrowth: 0,          // Expected annual salary increases as a fraction (eh 5% = 0.05)
+    spouseDisability: false,  // Whether spouse has a recognized disability
+    salaryGrowth: 0,          // Expected annual salary increases as a fraction (eg 5% = 0.05)
     dateOfBirth: null,        // The date of birth is necessary for taxation and retirement considerations.
     retirementDate: null,     // Planned retirement date. Null = no retirement planned
     retirementIncome: 0.5,    // Percentage of working age salary to be drawn as retirement income
@@ -48,7 +48,7 @@
   var chequingAccount = new ChequingAccount({
     ID: "1",
     name: "Test",
-    startDate: modelParameters.timelineStartDate, //SHould it be this date or should it be the present date? Historical transfers woul require not preset.
+    startDate: modelParameters.timelineStartDate, //Should it be this date or should it be the present date? Historical transfers woul require not preset.
     initialValue: 0,  // Start balance of $0
     accrualRate: 0 // With a negative accrual weight (depreciation) of 5% annually.
   });
@@ -71,6 +71,8 @@
   // A map of the currently loaded tax models based on the locales the user has selected.
   var taxModels = {
     None: {
+      taxDay: 31,
+      taxMonth: 12, // Taxes on the 31st of december
       calculateTaxTable: function() {
         return 0;
       },
@@ -80,8 +82,13 @@
       assetConstructor: Asset,
       investmentConstructor: InvestmentAccount,
       debtConstructor: DebtAccount,
+      chequingAccountConstructor: ChequingAccount,
     },
   };
+
+  var taxDay = taxModels["None"].taxDay; // The day that taxes are deducted based on the taxModel
+
+  var taxMonth = taxModels["None"].taxMonth; // The month that taxes are deducted based on the taxModel
 
   // A variable that stores a function for calculating taxation data tables for whatever
   // locale the user has selected.
@@ -102,6 +109,7 @@
   var AssetConstructor = taxModels["None"].assetConstructor;
   var InvestmentConstructor = taxModels["None"].investmentConstructor;
   var DebtConstructor = taxModels["None"].debtConstructor;
+  var ChequingAccountConstructor = taxModels["None"].ChequingAccountConstructor;
 
   // A list of valid relationship statuses that the user can select.
   var validFamilyStatuses = ["Single", "Married"];
@@ -391,7 +399,7 @@
         var err = new InvalidInputError("Inputs failed validation", {date: true});
         reject(err);
       }
-    });
+    })
   }
 
   function deleteUserSelectedEndDate() {
@@ -642,6 +650,7 @@
     this.startDate = modelParameters.timelineStartDate;
     this.initialValue = init.initialValue;
     this.value = init.initialValue;
+    this.currentYearTaxableAmount = 0;
   };
 
   InvestmentAccount.prototype = Object.create(FinancialAccount.prototype);
@@ -652,6 +661,8 @@
     this.accrualBuffer = 0; // A buffer for accrual changes that haven't been made effective (eg. bank interest that has not yet been deposited)
     this.accrualPaymentFrequency = init.accrualPaymentFrequency; // The number of times per year that accrued interest is deposited.
     this.accrualTransferID = "";
+    this.taxTransferID = "";
+    this.currentYearTaxableAmount = 0;
   };
 
   DebtAccount.prototype = Object.create(FinancialAccount.prototype);
@@ -800,12 +811,15 @@
       };
 
       validationPassed = validateAllFinancialInputs(inputInvestment, failedInputs);
-
+      console.log(1);
       if (validationPassed) {
-
+        console.log(2);
         var investmentID = generateUUID();
         inputInvestment.ID = investmentID;
         var investment = new InvestmentConstructor(inputInvestment);
+        console.log(investment);
+        console.log(validateFinancialObject(investment));
+        console.log(investment instanceof FinancialObject);
         investmentAccounts[investmentID] = investment;
 
         var initialTransfer = {
@@ -820,6 +834,7 @@
           toAccount: investmentAccounts[investmentID],
           valueFunction: function(){
             var amount = investment['accrualBuffer'];
+            investment.currentYearNetAccruals += amount;
             investment.accrualBuffer = 0;
             return amount;
           },
@@ -827,13 +842,38 @@
           frequency: investmentAccounts[investmentID].accrualPaymentFrequency,
         };
 
+        // Figure out the first year taxes apply to this investment.
+        var firstTaxYear = investmentAccounts[investmentID].startDate.year();
+        if (new moment({year:firstTaxYear, month:taxMonth-1, day:taxDay}).isBefore(investmentAccounts[investmentID].startDate)) {
+          firstTaxYear += 1;
+        };
+
+        var taxTransfer = {
+          fromAccount: investmentAccounts[investmentID],
+          toAccount: "external",
+          valueFunction: function(){
+            var amount = getTaxRate(investmentAccounts[investmentID]);
+            investment.currentYearTaxableAmount = 0;
+            return amount;
+          },
+          startDate: new Date(firstTaxYear, taxMonth-1, taxDay),
+          frequency: "Annually",
+        }
+
         createOneTimeTransfer(initialTransfer)
           .then(function (returnID) {
+            console.log(3);
             investmentAccounts[investmentID].initialTransferID = returnID;
             return createRecurringTransfer(accrualTransfer);
           })
           .then(function (returnID) {
+            console.log(4);
             investmentAccounts[investmentID].accrualTransferID = returnID;
+            return createRecurringTransfer(taxTransfer);
+          })
+          .then(function (returnID) {
+            console.log(5);
+            investmentAccounts[investmentID].taxTransferID = returnID;
             resolve(investmentID);
           })
           .catch( function(err) {
@@ -876,11 +916,13 @@
         inputInvestment.ID = investmentID;
         var tempInitialTransferID = investmentAccounts[investmentID].initialTransferID;
         var tempAccrualTransferID = investmentAccounts[investmentID].accrualTransferID;
+        var tempTaxTransferID = investmentAccounts[investmentID].taxTransferID;
         var tempAssociatedTransfers = investmentAccounts[investmentID].associatedTransfers;
         var investment = new InvestmentConstructor(inputInvestment);
         investmentAccounts[investmentID] = investment;
         investmentAccounts[investmentID].initialTransferID = tempInitialTransferID;
         investmentAccounts[investmentID].accrualTransferID = tempAccrualTransferID;
+        investmentAccounts[investmentID].taxTransferID = tempTaxTransferID;
         investmentAccounts[investmentID].associatedTransfers = tempAssociatedTransfers;
 
         var initialTransfer = {
@@ -895,6 +937,7 @@
           toAccount: investmentAccounts[investmentID],
           valueFunction: function(){
             var amount = investment['accrualBuffer'];
+            investment.currentYearNetAccruals += amount;
             investment.accrualBuffer = 0;
             return amount;
           },
@@ -902,11 +945,32 @@
           frequency: investmentAccounts[investmentID].accrualPaymentFrequency,
         };
 
+        // Figure out the first year taxes apply to this investment.
+        var firstTaxYear = investmentAccounts[investmentID].startDate.year();
+        if (new moment({year:firstTaxYear, month:taxMonth-1, day:taxDay}).isBefore(investmentAccounts[investmentID].startDate)) {
+          firstTaxYear += 1;
+        };
+
+        var taxTransfer = {
+          fromAccount: investmentAccounts[investmentID],
+          toAccount: "external",
+          valueFunction: function(){
+            var amount = getTaxRate(investmentAccounts[investmentID]);
+            investment.currentYearTaxableAmount = 0;
+            return amount;
+          },
+          startDate: new Date(firstTaxYear, taxMonth-1, taxDay),
+          frequency: "Annually",
+        }
+
         editOneTimeTransfer(investmentAccounts[investmentID].initialTransferID, initialTransfer)
           .then(function (returnID) {
             return editRecurringTransfer(investmentAccounts[investmentID].accrualTransferID, accrualTransfer);
           })
           .then(function (returnID) {
+            return editRecurringTransfer(investmentAccounts[investmentID].taxTransferID, taxTransfer);
+          })
+          .then( function(returnID) {
             resolve(investmentID);
           })
           .catch( function(err) {
@@ -971,6 +1035,7 @@
           toAccount: debtAccounts[debtID],
           valueFunction: function(){
             var amount = debt['accrualBuffer'];
+            debt.currentYearNetAccruals += amount;
             debt.accrualBuffer = 0;
             return amount;
           },
@@ -1046,6 +1111,7 @@
           toAccount: debtAccounts[debtID],
           valueFunction: function(){
             var amount = debt['accrualBuffer'];
+            debt.currentYearNetAccruals += amount;
             debt.accrualBuffer = 0;
             return amount;
           },
@@ -1115,6 +1181,11 @@
     });
   };
 
+  // The user always has exactly one chequing account with ID 1, so no creation or
+  // deletion methds are necessary.
+  function editChequingAccount(inputChequingAccount) {
+    // TODO: FINISH THIS
+  }
 
   // // //
   //  Constructors and functions for creating and managing the transfer definitions
@@ -1123,24 +1194,25 @@
   // // //
 
   // A constructor to create transfer objects for the timeline.
-  function TransferDefinition(fromAccount, toAccount, valueFunction) {
+  function TransferDefinition(fromAccount, toAccount, valueFunction, isTaxable) {
     this.fromAccount = fromAccount;
     this.toAccount = toAccount;
     this.valueFunction = valueFunction;
+    this.isTaxable = isTaxable;
   };
 
   // constructor for one time transfers
   OneTimeTransferDefinition.prototype = Object.create(TransferDefinition.prototype);
-  function OneTimeTransferDefinition(fromAccount, toAccount, valueFunction, date) {
-    TransferDefinition.call(this, fromAccount, toAccount, valueFunction);
+  function OneTimeTransferDefinition(fromAccount, toAccount, valueFunction, isTaxable, date) {
+    TransferDefinition.call(this, fromAccount, toAccount, valueFunction, isTaxable);
     this.type = "OneTime";
     this.date = date;
   };
 
   // constructor for one time transfers
   RecurringTransferDefinition.prototype = Object.create(TransferDefinition.prototype);
-  function RecurringTransferDefinition(fromAccount, toAccount, valueFunction, startDate, endDate, frequency) {
-    TransferDefinition.call(this, fromAccount, toAccount, valueFunction);
+  function RecurringTransferDefinition(fromAccount, toAccount, valueFunction, isTaxable, startDate, endDate, frequency) {
+    TransferDefinition.call(this, fromAccount, toAccount, valueFunction, isTaxable);
     this.type = "Recurring";
     this.startDate = startDate;
     this.endDate = endDate;
@@ -1169,7 +1241,7 @@
 
         // return an error object matching newTransfer's properties but with false for failed validaions
         var transferID = generateUUID();
-        var transferDef = new OneTimeTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, newTransfer.date);
+        var transferDef = new OneTimeTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, false, newTransfer.date);
         transferDefinitions[transferID] = transferDef;
 
         // Add the transferID to the associatedTransfers arrays on each FinancialAccount
@@ -1220,7 +1292,7 @@
         var originalToAccount = transferDefinitions[transferID].toAccount;
 
         // return an  error object matching newTransfer's properties but with false for failed validaions
-        var transferDef = new OneTimeTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, newTransfer.date);
+        var transferDef = new OneTimeTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, false, newTransfer.date);
 
         // If the accounts changed then delete the existing account(s) and add the new ones.
         if (newTransfer.fromAccount !== "external") {
@@ -1276,7 +1348,7 @@
 
         // return an error object matching newTransfer's properties but with false for failed validaions
         var transferID = generateUUID();
-        var transferDef = new RecurringTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, newTransfer.startDate, newTransfer.endDate, newTransfer.frequency);
+        var transferDef = new RecurringTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, false, newTransfer.startDate, newTransfer.endDate, newTransfer.frequency);
         transferDefinitions[transferID] = transferDef;
 
         // Add the transferID to the associatedTransfers arrays on each FinancialAccount
@@ -1328,7 +1400,7 @@
         var originalFromAccount = transferDefinitions[transferID].fromAccount;
         var originalToAccount = transferDefinitions[transferID].toAccount;
 
-        var transferDef = new RecurringTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, newTransfer.startDate, newTransfer.endDate, newTransfer.frequency);
+        var transferDef = new RecurringTransferDefinition(newTransfer.fromAccount, newTransfer.toAccount, newTransfer.valueFunction, false, newTransfer.startDate, newTransfer.endDate, newTransfer.frequency);
 
         // If the accounts changed then delete the existing account(s) and add the new ones.
         if (newTransfer.fromAccount !== "external") {
@@ -1481,7 +1553,8 @@
           timeline[currentTransferDef.date.format(timelineDateFormat)].transfers.push({
             fromAccount: currentTransferDef.fromAccount,
             toAccount: currentTransferDef.toAccount,
-            valueFunction: currentTransferDef.valueFunction
+            valueFunction: currentTransferDef.valueFunction,
+            //isTaxable: currentTransferDef.isTaxable
           });
         }
 
@@ -1537,22 +1610,27 @@
   function applyTaxModel(modelName) {
     // Apply associated taxModel components to calculateTaxTable(), and getTaxRate();
     // Also the constructors.
-
+    taxDay = taxModels[modelName].taxDay;
+    taxMonth = taxModels[modelName].taxMonth;
     calculateTaxTable = taxModels[modelName].calculateTaxTable;
     getTaxRate = taxModels[modelName].getTaxRate;
     AssetConstructor = taxModels[modelName].assetConstructor;
     InvestmentConstructor = taxModels[modelName].investmentConstructor;
     DebtConstructor = taxModels[modelName].debtConstructor;
+    ChequingAccountConstructor = taxModels[modelName].chequingAccountConstructor;
 
     // Need to manually set the PersonalFinanceEngine.__test__ parameters too since their
     // references apparently stick to the original underlying "None" taxModel even after the
     // calculateTaxTable variable is set to another taxModel like "Canada".
     // I'm not satisfied with this solution to pass unit tests, but it hackishly achieves my goal in the short term.
+    PersonalFinanceEngine.__test__.taxDay = taxModels[modelName].taxDay;
+    PersonalFinanceEngine.__test__.taxMonth = taxModels[modelName].taxMonth;
     PersonalFinanceEngine.__test__.calculateTaxTable = taxModels[modelName].calculateTaxTable;
     PersonalFinanceEngine.__test__.getTaxRate = taxModels[modelName].getTaxRate;
     PersonalFinanceEngine.__test__.AssetConstructor = taxModels[modelName].assetConstructor;
     PersonalFinanceEngine.__test__.InvestmentConstructor = taxModels[modelName].investmentConstructor;
     PersonalFinanceEngine.__test__.DebtConstructor = taxModels[modelName].debtConstructor;
+    PersonalFinanceEngine.__test__.ChequingAccountConstructor = taxModels[modelName].chequingAccountConstructor;
 
     taxData.country = countryDetails[locale.country].taxData;
     taxData.subdivision = subdivisionDetails[locale.country][locale.subdivision].taxData;
@@ -1568,6 +1646,7 @@
       for (var assetID in assets) {
         assets[assetID].value = 0;
         assets[assetID].currentPeriodNetAccruals = 0;
+        assets[assetID].currentYearNetAccruals = 0;
         assets[assetID].dataTable = [];
       }
 
@@ -1618,7 +1697,8 @@
             var principal = assets[assetID].value;
             var newValue = principal*Math.pow((1+(accrualRate/365)), daysElapsed);
             var accrual = newValue - principal;
-            assets[assetID].currentPeriodNetAccruals = newValue;
+            assets[assetID].currentPeriodNetAccruals += accrual;
+            assets[assetID].currentYearNetAccruals += accrual;
             assets[assetID].value += accrual; // assets don't get deposited interest, they implicitly appreciate or depreciate
           }
 
@@ -1647,6 +1727,12 @@
           var thisToAccount = timeline[thisDateString].transfers[j].toAccount;
           var thisFromAccount = timeline[thisDateString].transfers[j].fromAccount;
           var thisTransferAmount = timeline[thisDateString].transfers[j].valueFunction();
+          var thisIsTaxable = timeline[thisDateString].transfers[j].isTaxable;
+
+          // If this date is for taxation we need toupdate the taxTable
+          if (true) {
+
+          };
 
           // A debt shouldnt be overpaid:
           // See if there isn't a better place than here to accomplish this?
@@ -1660,11 +1746,17 @@
             }
           }
 
+          // Make sure any amounts that count as taxable income are recorded on the recaiving financial object.
+          if (thisIsTaxable) {
+            thisToAccount.currentYearTaxableAmount += thisTransferAmount;
+          }
+
           transfer(thisFromAccount, thisToAccount, thisTransferAmount);
         }
 
         // Push a row into the dataTable of each financal object if necessary
         if (timeline[thisDateString].recordThisDate) {
+
           for (var assetID in assets) {
             var thisValue = assets[assetID].value;
             var thisPeriodAccruals = assets[assetID].currentPeriodNetAccruals;
@@ -2044,6 +2136,8 @@
   __test__.taxModels = taxModels;
   __test__.getTaxModel = getTaxModel;
   __test__.applyTaxModel = applyTaxModel;
+  __test__.taxDay = taxDay;
+  __test__.taxMonth = taxMonth;
   __test__.calculateTaxTable = calculateTaxTable;
   __test__.taxData = taxData;
   __test__.taxTable = taxTable;
@@ -2051,8 +2145,9 @@
   __test__.AssetConstructor = AssetConstructor;
   __test__.InvestmentConstructor = InvestmentConstructor;
   __test__.DebtConstructor = DebtConstructor;
+  __test__.ChequingAccountConstructor = ChequingAccountConstructor;
   __test__.findMinDate = findMinDate;
-  __test__.findMaxDate =findMaxDate;
+  __test__.findMaxDate = findMaxDate;
   __test__.generateUUID = generateUUID;
   PersonalFinanceEngine.__test__ = __test__;
   //** END PersonalFinanceEngine FOR TEST **//

@@ -931,7 +931,7 @@ describe("Transfer defintion object constructors", function() {
         accrualRate: 0
       });
 
-      testOneTimeTransferDefinition = new PersonalFinanceEngine.__test__.OneTimeTransferDefinition(testFinancialAccount1, testFinancialAccount2, function(){return transferValue}, date);
+      testOneTimeTransferDefinition = new PersonalFinanceEngine.__test__.OneTimeTransferDefinition(testFinancialAccount1, testFinancialAccount2, function(){return transferValue}, false, date);
     });
 
     it("should have a OneTimeTransferDefinition constructor on the __test__ scope.", function() {
@@ -944,6 +944,7 @@ describe("Transfer defintion object constructors", function() {
       expect(testOneTimeTransferDefinition.fromAccount).toBeDefined();
       expect(testOneTimeTransferDefinition.toAccount).toBeDefined();
       expect(testOneTimeTransferDefinition.valueFunction).toEqual(jasmine.any(Function));
+      expect(testOneTimeTransferDefinition.isTaxable).toEqual(false);
       expect(testOneTimeTransferDefinition.date).toEqual(date);
     });
 
@@ -986,7 +987,7 @@ describe("Transfer defintion object constructors", function() {
         accrualRate: 0
       });
 
-      testRecurringTransferDefinition = new PersonalFinanceEngine.__test__.RecurringTransferDefinition(testFinancialAccount1, testFinancialAccount2, function(){return transferValue}, startDate, endDate, frequency);
+      testRecurringTransferDefinition = new PersonalFinanceEngine.__test__.RecurringTransferDefinition(testFinancialAccount1, testFinancialAccount2, function(){return transferValue}, false, startDate, endDate, frequency);
     });
 
     it("should have a RecurringTransferDefinition constructor on the __test__ scope.", function() {
@@ -999,6 +1000,7 @@ describe("Transfer defintion object constructors", function() {
       expect(testRecurringTransferDefinition.fromAccount).toBeDefined();
       expect(testRecurringTransferDefinition.toAccount).toBeDefined();
       expect(testRecurringTransferDefinition.valueFunction).toEqual(jasmine.any(Function));
+      expect(testRecurringTransferDefinition.isTaxable).toEqual(false);
       expect(testRecurringTransferDefinition.startDate).toEqual(startDate);
       expect(testRecurringTransferDefinition.endDate).toEqual(endDate);
     });
